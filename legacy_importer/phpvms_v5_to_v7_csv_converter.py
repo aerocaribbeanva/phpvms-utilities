@@ -156,13 +156,21 @@ def export_flights(data,file):
                 # in phpvms v5 sometimes sunday is '0' if that is found change it for '7'
                 code = f"{row.get('code').replace(' ','')}"
                 airline = code
-                if airline != "CRN":
-                    # check if it is a special code
-                    if code in special_code_to_airline.keys():
-                        airline = special_code_to_airline[code]
-                else:
+                if airline != "CRN" and (airline in special_code_to_airline.keys()):
+                    # get the special code
+                    airline = special_code_to_airline[code]
+                if airline != "CRN" and (airline not in special_code_to_airline.keys()):
                     # skip row if airline code is not tracked on special codes
-                    break
+                    continue
+                        
+                # in v7 flight type is 'F' for freighter and 'J' for passangers schedules
+                flighttype = f"{row.get('flighttype').replace(' ','')}"
+                flighttype = ""
+                if flighttype in v5_flight_type_to_v7.keys():
+                    flight_type = v5_flight_type_to_v7[flighttype]
+                else:
+                    # unknow flight type skip row
+                    continue
                 # f"{row.get('').replace(' ','')}"
                 days = f"{row.get('daysofweek').replace(' ','').replace('0','7')}"
                 flight_number = f"{row.get('flightnum').replace(' ','')}"
@@ -181,6 +189,21 @@ def export_flights(data,file):
                 dpt_arr_time_delta_in_minutes = (arr_time_datetime - dpt_time_datetime).total_seconds()/60
                 flight_time_in_minutes = abs(int(dpt_arr_time_delta_in_minutes))
                 flight_time = str(flight_time_in_minutes)
+                pilot_pay = f"{row.get('price').replace(' ','')}"
+                active = "1"
+                # each flight needs a subfleet
+                # based on the range by ICAO and type of flight we would assign the subfleet
+                subfleets_list = []
+                subfleets = ""
+                # construct the subfleets list
+                for aircraft_icao in airline_subfleet_by_flight_type[flight_type]:
+                    # if the subfleet icao has the range
+                    if int(aircrafts_range_by_icao[aircraft_icao]) > int(distance):
+                        # add the icao to the subfleet list for this flight
+                        subfleets_list.append(aircraft_icao)
+                if len(subfleets_list) > 0:
+                    # convert the subfleet list to a string where each subfleet is separated by ';' example: 'A30F;B48F;B74F;B75F;B76F;B77F;MD1F'
+                    subfleets = ';'.join(subfleets_list)
                 writer.writerow({
                     "airline": airline,
                     "flight_number": flight_number, 
@@ -196,15 +219,16 @@ def export_flights(data,file):
                     "level":"",
                     "distance":distance,
                     "flight_time":flight_time,
-                    "flight_type":"",
+                    "flight_type":flight_type,
                     "load_factor":"",
                     "load_factor_variance":"",
-                    "pilot_pay":"",
-                    "route,notes":"",
+                    "pilot_pay":pilot_pay,
+                    "route":"",
+                    "notes":"",
                     "start_date":"",
                     "end_date":"",
-                    "active":"",
-                    "subfleets":"",
+                    "active":active,
+                    "subfleets":subfleets,
                     "fares":"",
                     "fields":"",
                     "event_id":"",
