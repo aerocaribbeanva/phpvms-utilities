@@ -46,7 +46,7 @@ def import_schedules(file):
         for row in reader:
             # add schedule specific logic
             code = row.get("code")
-            if code.startswith("CRC") or code.startswith("CRC"):
+            if code.startswith("CRC") or code.startswith("CRN"):
                 data.append(row)
     return data
 
@@ -139,7 +139,8 @@ def export_flights(data,file):
                 "load_factor",
                 "load_factor_variance",
                 "pilot_pay",
-                "route,notes",
+                "route",
+                "notes",
                 "start_date",
                 "end_date",
                 "active",
@@ -161,15 +162,23 @@ def export_flights(data,file):
                     airline = special_code_to_airline[code]
                 if airline != "CRN" and (airline not in special_code_to_airline.keys()):
                     # skip row if airline code is not tracked on special codes
+                    print(f"unknow airline: '{airline}' skip row if airline code is not tracked on special codes")
                     continue
                         
                 # in v7 flight type is 'F' for freighter and 'J' for passangers schedules
                 flighttype = f"{row.get('flighttype').replace(' ','')}"
-                flighttype = ""
+                if flighttype == "":
+                    if code == "CRC":
+                        flighttype = "C"
+                    else:
+                        flighttype = "P"
+                flight_type = ""
                 if flighttype in v5_flight_type_to_v7.keys():
                     flight_type = v5_flight_type_to_v7[flighttype]
                 else:
                     # unknow flight type skip row
+                    print(f"unknow flight type:'{flighttype}' skipped row!")
+                    print(row)
                     continue
                 # f"{row.get('').replace(' ','')}"
                 days = f"{row.get('daysofweek').replace(' ','').replace('0','7')}"
@@ -184,8 +193,17 @@ def export_flights(data,file):
                 # flight time in v7 is a int that represents the total flight time in minutes
                 # the flight time is a string of the absolute value converted to an integer of the (arr_time - dep_time)
                 time_fmt = '%H:%M'
-                arr_time_datetime = datetime.strftime(arr_time,time_fmt)
-                dpt_time_datetime = datetime.strftime(dpt_time,time_fmt)
+                if arr_time.count(':') == 2:
+                    # remove seconds the last three characters
+                    arr_time = arr_time[:-3]
+                if dpt_time.count(':') == 2:
+                    # remove seconds the last three characters
+                    dpt_time = dpt_time[:-3]
+                # print(flight_number)
+                # print(arr_time)
+                # print(dpt_time)
+                arr_time_datetime = datetime.strptime(arr_time,time_fmt)
+                dpt_time_datetime = datetime.strptime(dpt_time,time_fmt)
                 dpt_arr_time_delta_in_minutes = (arr_time_datetime - dpt_time_datetime).total_seconds()/60
                 flight_time_in_minutes = abs(int(dpt_arr_time_delta_in_minutes))
                 flight_time = str(flight_time_in_minutes)
@@ -196,9 +214,9 @@ def export_flights(data,file):
                 subfleets_list = []
                 subfleets = ""
                 # construct the subfleets list
-                for aircraft_icao in airline_subfleet_by_flight_type[flight_type]:
+                for aircraft_icao in airline_subfleet_by_flight_type[airline][flight_type]:
                     # if the subfleet icao has the range
-                    if int(aircrafts_range_by_icao[aircraft_icao]) > int(distance):
+                    if float(aircrafts_range_by_icao[aircraft_icao]) > float(distance):
                         # add the icao to the subfleet list for this flight
                         subfleets_list.append(aircraft_icao)
                 if len(subfleets_list) > 0:
@@ -217,7 +235,7 @@ def export_flights(data,file):
                     "dpt_time":dpt_time,
                     "arr_time":arr_time,
                     "level":"",
-                    "distance":distance,
+                    "distance":str(int(float(distance))),
                     "flight_time":flight_time,
                     "flight_type":flight_type,
                     "load_factor":"",
@@ -269,9 +287,9 @@ def main():
                     export_aircrafts(imported_aircarft_data,filename)
                 case "schedules":
                     imported_schedules_data = import_schedules(filename)
-                    print([imported_schedules_data[0]])
-                    print_data([imported_schedules_data[0]])
-                    # export_flights(imported_data,filename)
+                    # print([imported_schedules_data[0]])
+                    # print_data([imported_schedules_data[0]])
+                    export_flights(imported_schedules_data,filename)
                 case _: 
                     print("Unknown filetype")
         else:
