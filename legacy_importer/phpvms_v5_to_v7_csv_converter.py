@@ -1,5 +1,6 @@
 import csv
 import time
+from datetime import datetime
 from argparse import ArgumentParser
 
 special_code_to_airline = {
@@ -170,7 +171,16 @@ def export_flights(data,file):
                 distance = f"{row.get('distance').replace(' ','')}"
                 dpt_time = f"{row.get('deptime').replace(' ','').replace('UTC','')}"
                 arr_time = f"{row.get('arrtime').replace(' ','').replace('UTC','')}"
-                flight_time = f"{row.get('flighttime').replace(' ','')}"
+                # flight_time = f"{row.get('flighttime').replace(' ','')}" # flight time would be calculate using dpt_time and arr_time
+                # flight time in v5 is a float that represents the total flight time in hours
+                # flight time in v7 is a int that represents the total flight time in minutes
+                # the flight time is a string of the absolute value converted to an integer of the (arr_time - dep_time)
+                time_fmt = '%H:%M'
+                arr_time_datetime = datetime.strftime(arr_time,time_fmt)
+                dpt_time_datetime = datetime.strftime(dpt_time,time_fmt)
+                dpt_arr_time_delta_in_minutes = (arr_time_datetime - dpt_time_datetime).total_seconds()/60
+                flight_time_in_minutes = abs(int(dpt_arr_time_delta_in_minutes))
+                flight_time = str(flight_time_in_minutes)
                 writer.writerow({
                     "airline": airline,
                     "flight_number": flight_number, 
@@ -185,7 +195,7 @@ def export_flights(data,file):
                     "arr_time":arr_time,
                     "level":"",
                     "distance":distance,
-                    "flight_time":"",
+                    "flight_time":flight_time,
                     "flight_type":"",
                     "load_factor":"",
                     "load_factor_variance":"",
