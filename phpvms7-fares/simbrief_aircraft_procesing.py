@@ -83,8 +83,7 @@ def calculate_cargo_capacity(icao, pax_capacity, max_payload):
         return max_payload  # Freighters use full payload as cargo
     else:
         pax_weight = pax_capacity * PASSENGER_WEIGHT_LBS
-        baggage_weight = pax_capacity * BAGGAGE_WEIGHT_LBS
-        return max(0, max_payload - (pax_weight + baggage_weight))  # Remaining capacity
+        return max(0, max_payload - pax_weight)  # Deduct passenger weight only
 
 # Function to adjust seat distribution
 def adjust_seat_distribution(layout, default_pax):
