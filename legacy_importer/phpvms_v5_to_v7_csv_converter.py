@@ -1,6 +1,5 @@
-import csv
-import time
-from datetime import datetime
+import csv,time,os
+from datetime import datetime,timedelta
 from argparse import ArgumentParser
 
 special_code_to_airline = {
@@ -14,12 +13,33 @@ v5_flight_type_to_v7 = {
 
 airline_subfleet_by_flight_type = {
     "CRN" : {
-        "J" : ["A20N","A21N","A310","A319","A320","A321","A332","A333","A346","A359","A388","AN24","AN26","AT45","AT46","AT75","AT76","B38M","B712","B732","B735","B737","B738","B739","B744","B752","B753","B763","B764","B77L","B77W","B788","C25C","DH8D","E110","E140","E145","E175","E190","E195","IL18","IL96","KODI","L410","PC12","TBM9","YK40"], #passengers subfleet string
-        "F" : ["A30F","B48F","B74F","B75F","B76F","B77F","MD1F"], #freighter subfleet
+        "J" : ["B734","B733","SH36","SH33","TRIS","BN2P","GA8","MI8","AN2","C172","B789","B78X","B762","BCS1","BCS3","A306","SU95","C208","B736","A20N","A21N","A310","A319","A320","A321","A332","A333","A346","A359","A388","AN24","AN26","AT45","AT46","AT75","AT76","B38M","B712","B732","B735","B737","B738","B739","B744","B752","B753","B763","B764","B77L","B77W","B788","C25C","DH8D","E110","E140","E145","E175","E190","E195","IL18","IL96","KODI","L410","PC12","TBM9","YK40"], #passengers subfleet string
+        "F" : ["SH36F","SH33F","A124","AT76F","E190F","A225","A30F","B48F","B74F","B75F","B76F","B77F","MD1F"], #freighter subfleet
     }
 }
-# range_by_icao verified on 2/19/2025
-aircrafts_range_by_icao = {'A20N': '3500', 'A21N': '4000', 'A30F': '4200', 'A310': '5150', 'A319': '3700', 'A320': '3300', 'A321': '2300', 'A332': '7250', 'A333': '6350', 'A346': '7900', 'A359': '8100', 'A388': '8000', 'AN24': '1000', 'AN26': '1100', 'AT45': '850', 'AT46': '800', 'AT75': '825', 'AT76': '950', 'B38M': '3550', 'B48F': '4200', 'B712': '2060', 'B732': '2300', 'B735': '1600', 'B737': '3350', 'B738': '3400', 'B739': '3200', 'B744': '7260', 'B74F': '4970', 'B752': '3900', 'B753': '3800', 'B75F': '3600', 'B763': '6000', 'B764': '6000', 'B76F': '3255', 'B77F': '8555', 'B77L': '8555', 'B77W': '7370', 'B788': '7355', 'C25C': '2165', 'DH8D': '1100', 'E110': '1200', 'E140': '1600', 'E145': '1550', 'E175': '2000', 'E190': '2400', 'E195': '2200', 'IL18': '2200', 'IL96': '6000', 'KODI': '1132', 'L410': '800', 'MD1F': '3800', 'PC12': '1845', 'TBM9': '1730', 'YK40': '1000'}
+
+aircrafts_range_by_icao = {'SH36F':'800','SH33F':'600','B734':'2060','B733':'2255','SH36':'800','SH33':'600','TRIS':'620','BN2P':'620','GA8':'730','MI8':'335','AN2':'450','A124':'3200','AT76F':'1000','E190F':'2300','C172':'600','B789':'7600','B78X':'6300','B762':'3900','BCS1':'3400','BCS3':'3300','A306':'4000','SU95':'2700','C208':'1000','B736':'3600','A225': '3900','A20N': '3500', 'A21N': '4000', 'A30F': '4200', 'A310': '5150', 'A319': '3700', 'A320': '3300', 'A321': '2300', 'A332': '7250', 'A333': '6350', 'A346': '7900', 'A359': '8100', 'A388': '8000', 'AN24': '1000', 'AN26': '1100', 'AT45': '850', 'AT46': '800', 'AT75': '825', 'AT76': '950', 'B38M': '3550', 'B48F': '4200', 'B712': '2060', 'B732': '2300', 'B735': '1600', 'B737': '3350', 'B738': '3400', 'B739': '3200', 'B744': '7260', 'B74F': '4970', 'B752': '3900', 'B753': '3800', 'B75F': '3600', 'B763': '6000', 'B764': '6000', 'B76F': '3255', 'B77F': '8555', 'B77L': '8555', 'B77W': '7370', 'B788': '7355', 'C25C': '2165', 'DH8D': '1100', 'E110': '1200', 'E140': '1600', 'E145': '1550', 'E175': '2000', 'E190': '2400', 'E195': '2200', 'IL18': '2200', 'IL96': '6000', 'KODI': '1132', 'L410': '800', 'MD1F': '3800', 'PC12': '1845', 'TBM9': '1730', 'YK40': '1000'}
+
+def validate_subfleets(file):
+    with open(file,'r') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            # check that the aircraft is on the airline subfleet dict and ranges dict
+            # add schedule specific logic
+            aircraft_in_fleet_dict = False
+            aircraft_type = row.get("type")
+            if aircraft_type in airline_subfleet_by_flight_type["CRN"]["J"]:
+                # found aircraft in passangers fleet
+                aircraft_in_fleet_dict = True
+            elif aircraft_type in airline_subfleet_by_flight_type["CRN"]["F"]:
+                # found aircraft in freighter fleet
+                aircraft_in_fleet_dict = True
+            
+            if not aircraft_in_fleet_dict:
+                print(f"{aircraft_type} not found on airline fleet dict, check passengers and freighter aircrafts\n--------")
+
+            if aircraft_type not in aircrafts_range_by_icao:
+                print(f"{aircraft_type} not found on airline range dict, chack passengers and freighter aircrafts\n--------")
 
 def import_aircraft(file):
     
@@ -114,6 +134,9 @@ def export_aircrafts(data,file):
     
     print("No Aircrafts data available to export")
     return False
+
+def remove_non_numeric(text):
+    return "".join(filter(str.isdigit, text))
 
 def export_flights(data,file):
     if len(data) > 0:
@@ -257,7 +280,110 @@ def export_flights(data,file):
     
     print("No flight data available to export")
     return False
+
+
+def split(filehandler, delimiter=',', row_limit=1000,
+          output_name_template='output_%s.csv', output_path='.', keep_headers=True):
+    reader = csv.reader(filehandler, delimiter=delimiter)
+    current_piece = 1
+    current_out_path = os.path.join(
+        output_path,
+        output_name_template % current_piece
+    )
+    current_out_writer = csv.writer(open(current_out_path, 'w',newline=''), delimiter=delimiter)
+    current_limit = row_limit
+    if keep_headers:
+        headers = next(reader)
+        current_out_writer.writerow(headers)
+    for i, row in enumerate(reader):
+        if i + 1 > current_limit:
+            current_piece += 1
+            current_limit = row_limit * current_piece
+            current_out_path = os.path.join(
+                output_path,
+                output_name_template % current_piece
+            )
+            current_out_writer = csv.writer(open(current_out_path, 'w',newline=''), delimiter=delimiter)
+            if keep_headers:
+                current_out_writer.writerow(headers)
+        current_out_writer.writerow(row)
             
+def update_subfleets(CSV_INPUT):
+    # Read and update CSV
+    with open(CSV_INPUT, 'r', newline='', encoding='utf-8') as csvfile_in:
+        reader = csv.DictReader(csvfile_in)
+        rows = list(reader)
+        fieldnames = reader.fieldnames
+
+    indexes_to_remove = []
+    for idx,row in enumerate(rows):
+        flight_number = int(remove_non_numeric(str(row['flight_number'])))
+        if flight_number < 100:
+            # skip and remove
+            indexes_to_remove.append(idx)
+            print(f"indx: {idx} | Flight: {flight_number} marked for deletion")
+            continue
+
+        flight_distance = int(row['distance'])
+        dpt_time = row["dpt_time"]
+        arr_time = row["arr_time"]
+        average_speed_knots = 300
+        avg_flight_time_min = (flight_distance / average_speed_knots) * 60
+        # the flight time is a string of the absolute value converted to an integer of the (arr_time - dep_time)
+        time_fmt = '%H:%M'
+        if arr_time.count(':') == 2:
+            # remove seconds the last three characters
+            arr_time = arr_time[:-3]
+        if dpt_time.count(':') == 2:
+            # remove seconds the last three characters
+            dpt_time = dpt_time[:-3]
+        dpt_time_datetime = datetime.strptime(dpt_time,time_fmt)
+        if arr_time == "":
+            arr_time_datetime = dpt_time_datetime + timedelta(minutes=avg_flight_time_min)
+            row['arr_time'] = arr_time_datetime.strftime(time_fmt)
+        else:
+            arr_time_datetime = datetime.strptime(arr_time,time_fmt)
+        dpt_arr_time_delta_in_minutes = (arr_time_datetime - dpt_time_datetime).total_seconds()/60
+        flight_time_in_minutes = abs(int(dpt_arr_time_delta_in_minutes))
+        flight_time = str(flight_time_in_minutes)
+        row["flight_time"] = flight_time
+        flight_type = row["flight_type"] 
+        subfleets = []
+        for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
+                if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
+                    subfleets.append(aircraft_icao)
+        row['subfleets'] = ';'.join(subfleets)
+
+    
+    # remove unwanted flights
+    print("Checking flights that need to be removed")
+    if len(indexes_to_remove) > 0:
+        print(f"Total number of schedules is {len(rows)}")
+        for idx,i in enumerate(indexes_to_remove):
+            # print(f"Removing Flight: {rows[i-idx]}")
+            del rows[i-idx]
+        print(f"Completed removing {len(indexes_to_remove)} flights that don't meet flight number requirement of 3 or more digits")
+        print(f"The new total number of schedules is {len(rows)}")
+    else:
+        print("No flights found that need to be removed")
+
+    # Write updated CSV
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    os.makedirs(timestr, exist_ok=True)
+    CSV_OUTPUT = f"{timestr}/exported-{timestr}-{CSV_INPUT}"
+    with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as csvfile_out:
+        writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f'Updated CSV saved as {CSV_OUTPUT}')
+
+    # if file has more than 500 schedules separate in files of 500 flights per file
+    if len(rows) > 500:
+        print("Spliting schedules into multiple files for import")
+        with open(CSV_OUTPUT,'r') as file:
+            split(file,row_limit=500,output_path=f"{timestr}")
+
 
 
 def main():
@@ -265,9 +391,9 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("-f", "--file", dest="filename",
                     help="phpvmsv5 csv file to read", metavar="filename.csv")
-    parser.register('type', 'filetype', lambda s: s if s in ["aircrafts","schedules"] else None)
+    parser.register('type', 'filetype', lambda s: s if s in ["aircrafts","schedules","add-subfleets-v7","validate-subfleet"] else None)
     parser.add_argument("-t", "--filetype", type="filetype",
-                    help="phpvmsv5 type of file to read ('aircrafts'|'schedules')", metavar="aircrafts")
+                    help="phpvmsv5 type of file to read ('aircrafts'|'schedules'|'add-subfleets-v7'|'validate-subfleet')", metavar="aircrafts")
 
     try:
         filename = ""
@@ -290,6 +416,11 @@ def main():
                     # print([imported_schedules_data[0]])
                     # print_data([imported_schedules_data[0]])
                     export_flights(imported_schedules_data,filename)
+                case "add-subfleets-v7":
+                    update_subfleets(filename)
+                case "validate-subfleet":
+                    validate_subfleets(filename)
+                    print(f"Completed subfleet validation: {filename}")
                 case _: 
                     print("Unknown filetype")
         else:
