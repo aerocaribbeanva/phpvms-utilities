@@ -214,5 +214,23 @@ if __name__ == "__main__":
     route_code=args.route_code
     os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
     time_generated = time.strftime("%Y%m%d-%H%M%S")
+    file_path = f"{AIRPORT_ICAO}_{route_code}/airports.txt"
+    # Validate if the file exists
+    if os.path.isfile(file_path):
+        print(f"\n✅ Found file: {file_path}\n")
+        print("📄 File Content:")
+        print("-" * 50)
+        with open(file_path, "r", encoding="utf-8") as file:
+            print(file.read())
+        print("-" * 50)
+        
+        # Ask user for confirmation
+        user_input = input("\nDo you want to continue? (Y/N): ").strip().lower()
+        if user_input != 'y':
+            print("❌ Execution aborted by user.")
+            exit(1)
+    else:
+        print(f"❌ File not found: {file_path}")
+        exit(1)
     generate_flights(parse_airport_file(f"{AIRPORT_ICAO}_{route_code}/airports.txt"), route_code, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
     update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
