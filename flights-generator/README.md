@@ -1,5 +1,11 @@
 # ✈️ phpVMS7 Flight Schedule Generator
 
+
+⚠️ WARNING: Do NOT Remove Lines from airports.txt
+
+> Important: Never remove lines from the airports.txt file once you have generated and imported flights into phpVMS7. Doing so will cause flight numbers to change, leading to broken or duplicate flight imports. You may only add new lines at the end of the file.
+
+
 ---
 
 ## ⚡ Quick Reference
