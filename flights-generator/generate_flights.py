@@ -65,50 +65,83 @@ def parse_airport_file(file_path):
         pairs.append(((a1_icao, a1_iata), (a2_icao, a2_iata)))
     return pairs
 
-def generate_flights(pairs, route_code, start_flight_number, output_csv):
+
+def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_mode=False, tour_config={}):
     current_number = start_flight_number
     records = []
     requests_made = 0
-    for (a1_icao, a1_iata), (a2_icao, a2_iata) in pairs:
-        # Rate limit handling
-        if requests_made >= MAX_REQUESTS_PER_MIN:
-            print("Reached 100 API requests, sleeping for 60 seconds...")
-            time.sleep(60)
-            requests_made = 0
-        distance = fetch_distance(a1_iata, a2_iata)
-        requests_made += 1
 
-        # Generate Passenger Outbound
-        dpt, arr, flt = calculate_flight_times(distance)
-        records.append([
-            "CRN", current_number, route_code, "", "", a1_icao, a2_icao, "", "1234567",
-            dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
-        ])
-        current_number += 1
+    if is_tour_mode:
+        print("Generating Tours Legs")
+        try:
+            current_number = int(tour_config.get("start_flight_number", "8000"))
+        except ValueError:
+            print("❌ Invalid 'start_flight_number' in tour config. Falling back to 8000.")
+            current_number = 8000
+        flight_type = tour_config.get("flight_type", "J").strip().upper()
+        pilot_pay = tour_config.get("pilot_pay", "").strip()
+        notes = tour_config.get("notes", "").strip()
+        start_date = tour_config.get("start_date","").strip()
+        end_date = tour_config.get("end_date","").strip()
 
-        # Passenger Return
-        dpt, arr, flt = calculate_flight_times(distance)
-        records.append([
-            "CRN", current_number, route_code, "", "", a2_icao, a1_icao, "", "1234567",
-            dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
-        ])
-        current_number += 1
+        for leg_number, ((a1_icao, a1_iata), (a2_icao, a2_iata)) in enumerate(pairs, start=1):
+            if requests_made >= MAX_REQUESTS_PER_MIN:
+                print("Reached 100 API requests, sleeping for 60 seconds...")
+                time.sleep(60)
+                requests_made = 0
+            distance = fetch_distance(a1_iata, a2_iata)
+            requests_made += 1
 
-        # Cargo Outbound
-        dpt, arr, flt = calculate_flight_times(distance)
-        records.append([
-            "CRN", current_number, route_code, "", "", a1_icao, a2_icao, "", "1234567",
-            dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
-        ])
-        current_number += 1
+            dpt, arr, flt = calculate_flight_times(distance)
 
-        # Cargo Return
-        dpt, arr, flt = calculate_flight_times(distance)
-        records.append([
-            "CRN", current_number, route_code, "", "", a2_icao, a1_icao, "", "1234567",
-            dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
-        ])
-        current_number += 1
+            records.append([
+                "CRN", current_number, route_code.upper(), "", leg_number, a1_icao, a2_icao, "", "1234567",
+                dpt, arr, "", distance, flt, flight_type, "", "", pilot_pay,
+                "", notes, start_date, end_date, "0", "", "", "", "", ""
+            ])
+            current_number += 1
+    else:
+        print("Generating Scheduled Flights")
+        for (a1_icao, a1_iata), (a2_icao, a2_iata) in pairs:
+            # Rate limit handling
+            if requests_made >= MAX_REQUESTS_PER_MIN:
+                print("Reached 100 API requests, sleeping for 60 seconds...")
+                time.sleep(60)
+                requests_made = 0
+            distance = fetch_distance(a1_iata, a2_iata)
+            requests_made += 1
+
+            # Generate Passenger Outbound
+            dpt, arr, flt = calculate_flight_times(distance)
+            records.append([
+                "CRN", current_number, route_code, "", "", a1_icao, a2_icao, "", "1234567",
+                dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
+            ])
+            current_number += 1
+
+            # Passenger Return
+            dpt, arr, flt = calculate_flight_times(distance)
+            records.append([
+                "CRN", current_number, route_code, "", "", a2_icao, a1_icao, "", "1234567",
+                dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
+            ])
+            current_number += 1
+
+            # Cargo Outbound
+            dpt, arr, flt = calculate_flight_times(distance)
+            records.append([
+                "CRN", current_number, route_code, "", "", a1_icao, a2_icao, "", "1234567",
+                dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
+            ])
+            current_number += 1
+
+            # Cargo Return
+            dpt, arr, flt = calculate_flight_times(distance)
+            records.append([
+                "CRN", current_number, route_code, "", "", a2_icao, a1_icao, "", "1234567",
+                dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
+            ])
+            current_number += 1
 
     with open(output_csv, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -150,7 +183,7 @@ def split(filehandler, delimiter=',', row_limit=1000,
 def remove_non_numeric(text):
     return "".join(filter(str.isdigit, text))
 
-def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT):
+def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False):
     # Read and update CSV
     with open(CSV_INPUT, 'r', newline='', encoding='utf-8') as csvfile_in:
         reader = csv.DictReader(csvfile_in)
@@ -189,12 +222,20 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT):
 
     # Write updated CSV
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    os.makedirs(f"{airport_icao}_{route_code}/{time_generated}/", exist_ok=True)
-    CSV_OUTPUT = f"{airport_icao}_{route_code}/{time_generated}/exported_{CSV_INPUT}"
-    with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as csvfile_out:
-        writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    if is_tour_mode:
+        os.makedirs(f"TOURS/{route_code}/{time_generated}/", exist_ok=True)
+        CSV_OUTPUT = f"TOURS/{route_code}/{time_generated}/exported_{CSV_INPUT}"
+        with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as csvfile_out:
+            writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)   
+    else:
+        os.makedirs(f"{airport_icao}_{route_code}/{time_generated}/", exist_ok=True)
+        CSV_OUTPUT = f"{airport_icao}_{route_code}/{time_generated}/exported_{CSV_INPUT}"
+        with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as csvfile_out:
+            writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
 
     print(f'Updated CSV saved as {CSV_OUTPUT}')
 
@@ -204,17 +245,7 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT):
         with open(CSV_OUTPUT,'r') as file:
             split(file,row_limit=500,output_path=f"{route_code}/{time_generated}")
 
-# Example usage (uncomment to run):
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
-    parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA)")
-    parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
-    args = parser.parse_args()
-    AIRPORT_ICAO=args.airport_icao
-    route_code=args.route_code
-    os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
-    time_generated = time.strftime("%Y%m%d-%H%M%S")
-    file_path = f"{AIRPORT_ICAO}_{route_code}/airports.txt"
+def validate_file(file_path):
     # Validate if the file exists
     if os.path.isfile(file_path):
         print(f"\n✅ Found file: {file_path}\n")
@@ -232,5 +263,53 @@ if __name__ == "__main__":
     else:
         print(f"❌ File not found: {file_path}")
         exit(1)
-    generate_flights(parse_airport_file(f"{AIRPORT_ICAO}_{route_code}/airports.txt"), route_code, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
-    update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
+
+def parse_tour_config(config_path):
+    config = {}
+    if not os.path.exists(config_path):
+        return config
+
+    with open(config_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        first_row = next(reader, {})
+
+        flight_type = first_row.get('flight_type', 'J').strip().upper()
+        if flight_type not in ['J', 'F']:
+            print("❌ Invalid flight_type in config. Falling back to 'J'.")
+            flight_type = 'J'
+
+        config['flight_type'] = flight_type
+        config['pilot_pay'] = first_row.get('pilot_pay', '').strip()
+        config['notes'] = f"<p>{first_row.get('notes', '').strip()}</p>"
+        config['start_flight_number'] = first_row.get('start_flight_number', '8000').strip()
+        config['start_date'] = f"{first_row.get('start_date').strip()} 00:00:00"
+        config['end_date'] = f"{first_row.get('end_date').strip()} 00:00:00"
+    return config
+
+# Example usage (uncomment to run):
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
+    parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA)")
+    parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
+    args = parser.parse_args()
+    AIRPORT_ICAO=args.airport_icao
+    route_code=args.route_code
+    is_tour_mode = AIRPORT_ICAO.upper() == "TOUR"
+    time_generated = time.strftime("%Y%m%d-%H%M%S")
+    if is_tour_mode:
+        print("Tour mode")
+        os.makedirs(f"TOURS/{route_code}", exist_ok=True)
+        file_path = f"TOURS/{route_code}/legs.txt"
+        config_path = f"TOURS/{route_code}/config.csv"
+        validate_file(file_path)
+        pairs = parse_airport_file(file_path)
+        generate_flights(pairs,route_code,8000,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,parse_tour_config(config_path))
+        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True)
+    else:
+        print("Schedules mode")
+        os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
+        file_path = f"{AIRPORT_ICAO}_{route_code}/airports.txt"
+        validate_file(file_path)
+        pairs = parse_airport_file(file_path)
+        generate_flights(pairs, route_code, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
+        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
