@@ -5,10 +5,10 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-7-5-25.csv'
+CSV_INPUT = 'subfleets-9-26-25.csv'
 JSON_INPUT = 'aircraft_data_20250705_084347.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-CSV_OUTPUT = f'updated_fares_{timestamp}.csv'
+CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 
 # non simbrief aircraft data - this are aircrafts not available in simbrief and require a custom profile
 # custom_fare_data = {
@@ -142,6 +142,58 @@ custom_fare_data = {
             "oei_lbs": 15350.0,
             "is_freighter": True,
             "F": 0,
+            "J": 0,
+            "Y": 0
+        },
+            "EC45" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758886775303",    
+            "icao": "EC45",
+            "aircraft_name": "Airbus H145",
+            "base_type": "DA62",
+            "default_pax": 10,
+            "mzfw_lbs": 8378.0,
+            "oei_lbs": 4178.0,
+            "is_freighter": False,
+            "F": 10,
+            "J": 0,
+            "Y": 0
+        },
+            "EC35" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758886775303",    
+            "icao": "EC35",
+            "aircraft_name": "Airbus H135",
+            "base_type": "DA62",
+            "default_pax": 8,
+            "mzfw_lbs": 6332.0,
+            "oei_lbs": 3208.0,
+            "is_freighter": False,
+            "F": 8,
+            "J": 0,
+            "Y": 0
+        },
+            "C402" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758888295942",    
+            "icao": "C402",
+            "aircraft_name": "Cessna 402",
+            "base_type": "C404",
+            "default_pax": 8,
+            "mzfw_lbs": 6515.0,
+            "oei_lbs": 4238.0,
+            "is_freighter": False,
+            "F": 8,
+            "J": 0,
+            "Y": 0
+        },
+            "H60" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758888790325",    
+            "icao": "H60",
+            "aircraft_name": "Sikorsky Helicopter",
+            "base_type": "DA42",
+            "default_pax": 6,
+            "mzfw_lbs": 20000.0,
+            "oei_lbs": 11032.0,
+            "is_freighter": False,
+            "F": 6,
             "J": 0,
             "Y": 0
         }
