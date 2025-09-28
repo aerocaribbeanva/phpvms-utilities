@@ -1,0 +1,56 @@
+MUHA-HAV,SABE-AEP # Argentina, Buenos Aires, Aeroparque Jorge Newbery
+MUHA-HAV,SAEZ-EZE # Argentina, Buenos Aires, Ministro Pistarini Intl (Ezeiza)
+MUHA-HAV,SACO-COR # Argentina, Córdoba, Ingeniero Aeronáutico Ambrosio L.V. Taravella Intl
+MUHA-HAV,SLLP-LPB # Bolivia, La Paz, El Alto Intl
+MUHA-HAV,SLVR-VVI # Bolivia, Santa Cruz, Viru Viru Intl
+MUHA-HAV,SBBR-BSB # Brazil, Brasília, Presidente Juscelino Kubitschek Intl
+MUHA-HAV,SBGL-GIG # Brazil, Rio de Janeiro, Galeão Intl
+MUHA-HAV,SBRJ-SDU # Brazil, Rio de Janeiro, Santos Dumont
+MUHA-HAV,SBGR-GRU # Brazil, São Paulo, Guarulhos Intl
+MUHA-HAV,SBEG-MAO # Brazil, Manaus, Eduardo Gomes Intl
+MUHA-HAV,SEGU-GYE # Ecuador, Guayaquil, José Joaquín de Olmedo Intl
+MUHA-HAV,SEQM-UIO # Ecuador, Quito, Mariscal Sucre Intl
+MUHA-HAV,SPJC-LIM # Peru, Lima, Jorge Chávez Intl
+MUHA-HAV,SGAS-ASU # Paraguay, Asunción, Silvio Pettirossi Intl
+MUHA-HAV,SKBO-BOG # Colombia, Bogotá, El Dorado Intl
+MUHA-HAV,SKCL-CLO # Colombia, Cali, Alfonso Bonilla Aragón Intl
+MUHA-HAV,SKRG-MDE # Colombia, Medellín, José María Córdova Intl
+MUHA-HAV,SCEL-SCL # Chile, Santiago, Arturo Merino Benítez Intl
+MUHA-HAV,SUMU-MVD # Uruguay, Montevideo, Carrasco Intl
+MUHA-HAV,SVMI-CCS # Venezuela, Caracas, Simón Bolívar Intl
+MUHA-HAV,TNCA-AUA # Aruba, Oranjestad, Queen Beatrix Intl
+MUHA-HAV,TNCC-CUR # Curaçao, Willemstad, Hato Intl
+MUHA-HAV,TTPP-POS # Trinidad & Tobago, Port of Spain, Piarco Intl
+MUHA-HAV,TFFF-FDF # Martinique, Fort-de-France, Aimé Césaire Intl
+MUHA-HAV,TFFR-PTP # Guadeloupe, Pointe-à-Pitre, Le Raizet Intl
+MUHA-HAV,TJSJ-SJU # Puerto Rico, San Juan, Luis Muñoz Marín Intl
+MUHA-HAV,TJBQ-BQN # Puerto Rico, Aguadilla, Rafael Hernández Intl
+MUHA-HAV,TJPS-PSE # Puerto Rico, Ponce, Mercedita Intl
+MUHA-HAV,TIST-STT # US Virgin Islands, St. Thomas, Cyril E. King
+MUHA-HAV,TISX-STX # US Virgin Islands, St. Croix, Henry E. Rohlsen
+MUHA-HAV,TUPJ-EIS # British Virgin Islands, Tortola, Terrance B. Lettsome Intl
+MUHA-HAV,TUPW-VIJ # British Virgin Islands, Virgin Gorda Airport
+MUHA-HAV,TKPN-NEV # St. Kitts & Nevis, Nevis, Vance W. Amory Intl
+MUHA-HAV,TKPK-SKB # St. Kitts & Nevis, St. Kitts, Robert L. Bradshaw Intl
+MUHA-HAV,TQPF-AXA # Anguilla, Clayton J. Lloyd Intl
+MUHA-HAV,TFFJ-SBH # St. Barthélemy, Gustaf III Airport
+MUHA-HAV,TLPL-UVF # St. Lucia, Hewanorra Intl
+MUHA-HAV,TLPC-SLU # St. Lucia, George F.L. Charles Airport
+MUHA-HAV,TBPB-BGI # Barbados, Bridgetown, Grantley Adams Intl
+MUHA-HAV,MKJP-KIN # Jamaica, Kingston, Norman Manley Intl
+MUHA-HAV,MKJS-MBJ # Jamaica, Montego Bay, Sangster Intl
+MUHA-HAV,MWCR-GCM # Cayman Islands, Grand Cayman, Owen Roberts Intl
+MUHA-HAV,MBPV-PLS # Turks & Caicos, Providenciales Intl
+MUHA-HAV,MYNN-NAS # Bahamas, Nassau, Lynden Pindling Intl
+MUHA-HAV,MHTG-TGU # Honduras, Tegucigalpa, Toncontín Intl
+MUHA-HAV,MHRO-RTB # Honduras, Roatán, Juan Manuel Gálvez Intl
+MUHA-HAV,MHLM-SAP # Honduras, San Pedro Sula, Ramón Villeda Morales Intl
+MUHA-HAV,MNMG-MGA # Nicaragua, Managua, Augusto C. Sandino Intl
+MUHA-HAV,MSLP-SAL # El Salvador, San Salvador, Mons. Óscar Arnulfo Romero Intl
+MUHA-HAV,MROC-SJO # Costa Rica, San José, Juan Santamaría Intl
+MUHA-HAV,MRLB-LIR # Costa Rica, Liberia, Daniel Oduber Quirós Intl
+MUHA-HAV,MPTO-PTY # Panama, Panama City, Tocumen Intl
+MUHA-HAV,MGGT-GUA # Guatemala, Guatemala City, La Aurora Intl
+MUHA-HAV,MMMX-MEX # Mexico, Mexico City, Benito Juárez Intl
+MUHA-HAV,MMUN-CUN # Mexico, Cancún, Cancún Intl
+MUHA-HAV,MMSD-SJD # Mexico, San José del Cabo, Los Cabos Intl

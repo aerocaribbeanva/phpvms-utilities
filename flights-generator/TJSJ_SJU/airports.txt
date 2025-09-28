@@ -1,8 +1,40 @@
-TJSJ-SJU,TJVQ-VQS
-TJSJ-SJU,TIST-STT
-TJSJ-SJU,TISX-STX
-TJSJ-SJU,TUPJ-EIS
-TJSJ-SJU,TUPW-VIJ
-TJSJ-SJU,TKPN-NEV
-TJSJ-SJU,TQPF-AXA
-TJSJ-SJU,TFFJ-SBH
+TJSJ-SJU,TJVQ-VQS # Puerto Rico, Vieques, Antonio Rivera Rodríguez
+TJSJ-SJU,TIST-STT # US Virgin Islands, St. Thomas, Cyril E. King
+TJSJ-SJU,TISX-STX # US Virgin Islands, St. Croix, Henry E. Rohlsen
+TJSJ-SJU,TUPJ-EIS # British Virgin Islands, Tortola, Terrance B. Lettsome Intl
+TJSJ-SJU,TUPW-VIJ # British Virgin Islands, Virgin Gorda Airport
+TJSJ-SJU,TKPN-NEV # St. Kitts & Nevis, Nevis, Vance W. Amory Intl
+TJSJ-SJU,TQPF-AXA # Anguilla, Clayton J. Lloyd Intl
+TJSJ-SJU,TFFJ-SBH # St. Barthélemy, Gustaf III Airport
+TJSJ-SJU,KMIA-MIA # USA, Miami Intl
+TJSJ-SJU,KJFK-JFK # USA, New York John F. Kennedy Intl
+TJSJ-SJU,KEWR-EWR # USA, Newark Liberty Intl
+TJSJ-SJU,KBOS-BOS # USA, Boston Logan Intl
+TJSJ-SJU,KMCO-MCO # USA, Orlando Intl
+TJSJ-SJU,KFLL-FLL # USA, Fort Lauderdale Intl
+TJSJ-SJU,KATL-ATL # USA, Atlanta Hartsfield–Jackson Intl
+TJSJ-SJU,KDEN-DEN # USA, Denver Intl
+TJSJ-SJU,KPHX-PHX # USA, Phoenix Sky Harbor Intl
+TJSJ-SJU,EGLL-LHR # United Kingdom, London Heathrow
+TJSJ-SJU,LFPG-CDG # France, Paris Charles de Gaulle
+TJSJ-SJU,LEMD-MAD # Spain, Madrid Barajas
+TJSJ-SJU,EHAM-AMS # Netherlands, Amsterdam Schiphol
+TJSJ-SJU,EDDF-FRA # Germany, Frankfurt Intl
+TJSJ-SJU,LIRF-FCO # Italy, Rome Fiumicino
+TJSJ-SJU,LEBL-BCN # Spain, Barcelona El Prat
+TJSJ-SJU,LOWW-VIE # Austria, Vienna Intl
+TJSJ-SJU,EDDM-MUC # Germany, Munich Intl
+TJSJ-SJU,LSZH-ZRH # Switzerland, Zurich Intl
+TJSJ-SJU,EKCH-CPH # Denmark, Copenhagen Kastrup
+TJSJ-SJU,ESSA-ARN # Sweden, Stockholm Arlanda
+TJSJ-SJU,EFHK-HEL # Finland, Helsinki Vantaa
+TJSJ-SJU,LHBP-BUD # Hungary, Budapest Ferenc Liszt
+TJSJ-SJU,DNMM-LOS # Nigeria, Lagos Murtala Muhammed
+TJSJ-SJU,FACT-CPT # South Africa, Cape Town Intl
+TJSJ-SJU,FAOR-JNB # South Africa, Johannesburg O.R. Tambo
+TJSJ-SJU,GOBD-DSS # Senegal, Dakar Blaise Diagne
+TJSJ-SJU,HECA-CAI # Egypt, Cairo Intl
+TJSJ-SJU,OMDB-DXB # UAE, Dubai Intl
+TJSJ-SJU,VABB-BOM # India, Mumbai Intl
+TJSJ-SJU,RJTT-HND # Japan, Tokyo Haneda
+TJSJ-SJU,ZBAA-PEK # China, Beijing Capital Intl
