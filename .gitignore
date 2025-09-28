@@ -1,3 +1,8 @@
+# generate local flighs ignore only upload to git main files
+output_*
+exported-*
+test_*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
