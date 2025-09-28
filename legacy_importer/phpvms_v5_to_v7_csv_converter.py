@@ -39,7 +39,7 @@ def validate_subfleets(file):
                 print(f"{aircraft_type} not found on airline fleet dict, check passengers and freighter aircrafts\n--------")
 
             if aircraft_type not in aircrafts_range_by_icao:
-                print(f"{aircraft_type} not found on airline range dict, chack passengers and freighter aircrafts\n--------")
+                print(f"{aircraft_type} not found on airline range dict, check passengers and freighter aircrafts\n--------")
 
 def import_aircraft(file):
     
