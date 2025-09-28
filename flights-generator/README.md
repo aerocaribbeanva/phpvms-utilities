@@ -87,16 +87,17 @@ It calculates distances using the [AirportGap API](https://airportgap.com/) and 
 
 ## 📌 Features
 
-- 🔁 Generates passenger & cargo roundtrip flights from route pairs
-- 🧭 Tour mode: create sequential flights with custom pay, notes, date range
-- 📏 Calculates flight distance using AirportGap API
-- 🛫 Auto-assigns subfleets based on flight distance
+- 🔁 Generates passenger & cargo roundtrip flights from route pairs  
+- 🧭 Tour mode: create sequential flights with custom pay, notes, date range  
+- 📏 Calculates flight distance using AirportGap API  
+- 🛫 Auto-assigns subfleets based on flight distance  
 - 🧠 Validates:
   - Duplicate lines in `airports.txt` or `legs.txt`
   - ICAO-IATA format (`AAAA-BBB`)
   - IATA-ICAO match via AirportGap API
-- ⛔ Aborts on invalid lines
-- 🗂️ Splits large flight sets into multiple CSVs
+- ⛔ Aborts on invalid lines  
+- 🗂️ Splits large flight sets into multiple CSVs  
+- 🗄️ Uses a cache for distances to minimize AirportGap API calls  
 
 ---
 
@@ -128,7 +129,7 @@ project_root/
 
 ## 🔑 Setup
 
-1. Clone or download this repo
+1. Clone or download this repo  
 2. Install dependencies:
 
 ```bash
@@ -151,23 +152,23 @@ setx AIRPORT_GAP_TOKEN "your_api_token"
 
 ## ✅ Validations
 
-- Duplicate lines in `airports.txt` or `legs.txt` → ❌ Abort
-- Invalid line format (must be `AAAA-BBB`) → ❌ Abort
-- ICAO-IATA mismatch via AirportGap API → ❌ Abort
-- `config.csv` is **required** for TOURS
-- `start_date` and `end_date` must be present
+- Duplicate lines in `airports.txt` or `legs.txt` → ❌ Abort  
+- Invalid line format (must be `AAAA-BBB`) → ❌ Abort  
+- ICAO-IATA mismatch via AirportGap API → ❌ Abort  
+- `config.csv` is **required** for TOURS  
+- `start_date` and `end_date` must be present  
 
-> Local cache of validated airports will be supported in a future version
+> Local cache of validated airports will be supported in a future version  
 
 ---
 
 ## 📜 License
 
-MIT License – Free for Virtual Airline use
+MIT License – Free for Virtual Airline use  
 
 ---
 
 ## ✈️ Credits
 
-- Developed for **Aerocaribbean Virtual Airline**
+- Developed for **Aerocaribbean Virtual Airline**  
 - Uses [AirportGap API](https://airportgap.com/)
