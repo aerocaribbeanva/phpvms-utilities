@@ -1,5 +1,7 @@
 import csv
 import os
+import shutil
+import json
 import random
 import time
 import argparse
@@ -7,6 +9,7 @@ from datetime import datetime, timedelta
 import requests
 
 # Constants
+CACHE_FILE = "distance_cache.json"
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
 TOKEN = os.getenv("AIRPORT_GAP_TOKEN")
@@ -42,28 +45,105 @@ def calculate_flight_times(distance_nm):
     arr_time = dpt_time + timedelta(minutes=flight_time_min)
     return (dpt_time.strftime(TIME_FMT), arr_time.strftime(TIME_FMT), str(int(flight_time_min)))
 
-def fetch_distance(from_iata, to_iata):
-    response = requests.post(API_URL, data={"from": from_iata, "to": to_iata}, headers=HEADERS)
-    while response.status_code == 429:
-        print("Rate limit hit. Waiting 60 seconds...")
-        time.sleep(60)
-        response = requests.post(API_URL, data={"from": from_iata, "to": to_iata}, headers=HEADERS)
-    if response.status_code == 200:
-        data = response.json()
-        return int(data['data']['attributes']['nautical_miles'])
-    else:
-        raise Exception(f"Failed to fetch distance: {response.status_code}, {response.text}")
+def _load_cache(path=CACHE_FILE):
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            # Corrupt file? start fresh.
+            return {}
+    return {}
+
+def _save_cache(cache: dict, path=CACHE_FILE):
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2, sort_keys=True)
+    os.replace(tmp, path)
+
+def _key_for_route(from_iata: str, to_iata: str) -> str:
+    """Symmetric cache key so A-B and B-A hit the same entry."""
+    a, b = from_iata.strip().upper(), to_iata.strip().upper()
+    return f"{min(a,b)}-{max(a,b)}"
+
+def fetch_distance(from_iata, to_iata, cache_path: str = CACHE_FILE):
+    """
+    Fetch great-circle distance in nautical miles between two IATA codes.
+    Uses a JSON file cache to avoid repeated API calls.
+    """
+    cache = _load_cache(cache_path)
+    key = _key_for_route(from_iata, to_iata)
+
+    # 1) Cache hit
+    if key in cache:
+        return int(cache[key])
+    
+    # 2) Cache miss → call API with basic rate-limit handling
+    payload = {"from": from_iata, "to": to_iata}
+    print("Cache miss → call API with basic rate-limit handling")
+    print(f"Retrieve distance {payload}")
+    backoff = 30  # seconds
+    max_wait = 5 * 60  # cap total wait per call (optional)
+
+    waited = 0
+    while True:
+        response = requests.post(API_URL, data=payload, headers=HEADERS)
+        if response.status_code == 200:
+            data = response.json()
+            nm = int(data["data"]["attributes"]["nautical_miles"])
+            cache[key] = nm
+            _save_cache(cache, cache_path)
+            return nm
+
+        if response.status_code == 429:
+            # Rate limited → wait and retry with exponential backoff (capped)
+            sleep_s = min(backoff, max_wait - waited) if max_wait else backoff
+            if sleep_s <= 0:
+                raise TimeoutError("Rate limit persisted too long; aborting.")
+            print(f"Rate limit hit. Waiting {sleep_s} seconds...")
+            time.sleep(sleep_s)
+            waited += sleep_s
+            backoff = min(backoff * 2, 120)  # grow to a max of 2 min
+            continue
+
+        # Other non-200 responses → raise with details
+        try:
+            err_txt = response.text
+        except Exception:
+            err_txt = "<no body>"
+        raise Exception(f"Failed to fetch distance ({response.status_code}): {err_txt}")
 
 def parse_airport_file(file_path):
     with open(file_path, 'r') as file:
         lines = file.read().strip().splitlines()
     pairs = []
     for line in lines:
+        # if line has a comment ignore that comment
+        if '#' in line:
+            # save the line without the comment
+            line = line.split('#')[0].strip()
         parts = line.split(',')
         a1_icao, a1_iata = parts[0].split('-')
         a2_icao, a2_iata = parts[1].split('-')
         pairs.append(((a1_icao, a1_iata), (a2_icao, a2_iata)))
     return pairs
+
+def has_duplicates(pairs):
+    # convert the pairs to a set which removes duplicates
+    set_pairs = set(pairs)
+    if len(pairs) != len(set_pairs):
+        # if the lenght is not equal we found duplicates
+        print("Duplicate entries found aborting flight generation.\nRemove duplicated lines")
+        # print any duplicated lines
+        pairs_dict = dict()
+        for index,pair in enumerate(pairs):
+            if pair not in pairs_dict.keys():
+                pairs_dict[pair] = 1
+            else:
+                pairs_dict[pair] +=1
+                print(f"Line {index + 1}: {pair} has been found {pairs_dict[pair]} times on file")
+        return True
+    return False
 
 
 def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_mode=False, tour_config={}):
@@ -228,7 +308,9 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
         with open(CSV_OUTPUT, 'w', newline='', encoding='utf-8') as csvfile_out:
             writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(rows)   
+            writer.writerows(rows)
+        # copy the file to the main directory to keep track of the changes in git
+        shutil(CSV_OUTPUT,f"TOURS/{route_code}/DS_Tour_{route_code}_Legs.csv")   
     else:
         os.makedirs(f"{airport_icao}_{route_code}/{time_generated}/", exist_ok=True)
         CSV_OUTPUT = f"{airport_icao}_{route_code}/{time_generated}/exported_{CSV_INPUT}"
@@ -236,6 +318,8 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
             writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
+        shutil(CSV_OUTPUT,f"{airport_icao}_{route_code}/{airport_icao}_{route_code}_Flights.csv")   
+
 
     print(f'Updated CSV saved as {CSV_OUTPUT}')
 
@@ -249,6 +333,8 @@ def validate_file(file_path):
     # Validate if the file exists
     if os.path.isfile(file_path):
         print(f"\n✅ Found file: {file_path}\n")
+        if has_duplicates(parse_airport_file(file_path)):
+            raise ValueError(f"Duplicates found on {file_path}")
         print("📄 File Content:")
         print("-" * 50)
         with open(file_path, "r", encoding="utf-8") as file:
