@@ -310,7 +310,7 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
             writer.writeheader()
             writer.writerows(rows)
         # copy the file to the main directory to keep track of the changes in git
-        shutil(CSV_OUTPUT,f"TOURS/{route_code}/DS_Tour_{route_code}_Legs.csv")   
+        shutil.copyfile(CSV_OUTPUT,f"TOURS/{route_code}/DS_Tour_{route_code}_Legs.csv")   
     else:
         os.makedirs(f"{airport_icao}_{route_code}/{time_generated}/", exist_ok=True)
         CSV_OUTPUT = f"{airport_icao}_{route_code}/{time_generated}/exported_{CSV_INPUT}"
@@ -318,7 +318,7 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
             writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
-        shutil(CSV_OUTPUT,f"{airport_icao}_{route_code}/{airport_icao}_{route_code}_Flights.csv")   
+        shutil.copyfile(CSV_OUTPUT,f"{airport_icao}_{route_code}/{airport_icao}_{route_code}_Flights.csv")   
 
 
     print(f'Updated CSV saved as {CSV_OUTPUT}')
@@ -399,3 +399,5 @@ if __name__ == "__main__":
         pairs = parse_airport_file(file_path)
         generate_flights(pairs, route_code, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
         update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
+        # cleanup the file without subfleets
+        os.remove(f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")

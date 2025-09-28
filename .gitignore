@@ -1,7 +1,7 @@
 # generate local flighs ignore only upload to git main files
-output_*
-exported-*
-test_*
+output*
+exported*
+test*
 v5-exports
 
 # Byte-compiled / optimized / DLL files
