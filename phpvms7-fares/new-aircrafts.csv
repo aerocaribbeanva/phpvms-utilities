@@ -26,10 +26,10 @@ SH33F,SH33,Short 330 Freighter,AC-C1900,true,6/12/25
 SH36F,SH36,Short 360 Freighter,AC-C1901,true,6/12/25
 B733,B733,Boeing 737-300,AC-T1926,true,6/12/25
 B734,B734,Boeing 737-400,AC-T1927,true,6/12/25
-H145,EC45,Airbus H145 Pax,AC-T1928,false,undefined
-H145,EC45,Airbus H145 Lux,AC-T1929,false,undefined
-H145,EC45,Airbus H145 Cargo,AC-C1902,true,undefined
-DHC6,DHC6,de Havilland Canada Twin Otter,AC-T1929,false,undefined
-H135,EC35,Airbus H135 Helicopter,AC-T1930,false,undefined
-C402,C402,Cessna 402,AC-T1931,false,undefined
-H60,H60,Sikorsky Helicopter,AC-T1932,false,undefined
+H145,EC45,Airbus H145 Pax,AC-T1928,false,9/28/2025
+H145,EC45,Airbus H145 Lux,AC-T1929,false,9/28/25
+H145,EC45,Airbus H145 Cargo,AC-C1902,true,9/28/25
+H135,EC35,Airbus H135 Helicopter,AC-T1930,false,9/28/25
+DHC6,DHC6,de Havilland Canada Twin Otter,AC-T1931,false,9/28/25
+C402,C402,Cessna 402,AC-T1932,false,9/28/25
+H60,H60,Sikorsky Helicopter,AC-T1933,false,9/28/25
