@@ -177,4 +177,3 @@ cython_debug/
 .pypirc
 
 # ignore csv files
-legacy_importer/*.csv
