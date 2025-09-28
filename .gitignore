@@ -2,6 +2,7 @@
 output_*
 exported-*
 test_*
+v5-exports
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
