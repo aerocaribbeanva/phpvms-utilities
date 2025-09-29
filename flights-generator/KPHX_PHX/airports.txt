@@ -66,3 +66,11 @@ KPHX-PHX,MMCL-CUL  # Culiacán (Federal de Bachigualato Intl)
 KPHX-PHX,MMZH-ZIH  # Zihuatanejo/Ixtapa Intl
 KPHX-PHX,MMMD-MID  # Mérida (Manuel Crescencio Rejón Intl)
 KPHX-PHX,MMTM-TAM  # Tampico (General Francisco Javier Mina Intl)
+TJSJ-SJU,KMIA-MIA # USA, Miami Intl
+TJSJ-SJU,KJFK-JFK # USA, New York John F. Kennedy Intl
+TJSJ-SJU,KEWR-EWR # USA, Newark Liberty Intl
+TJSJ-SJU,KBOS-BOS # USA, Boston Logan Intl
+TJSJ-SJU,KMCO-MCO # USA, Orlando Intl
+TJSJ-SJU,KFLL-FLL # USA, Fort Lauderdale Intl
+TJSJ-SJU,KATL-ATL # USA, Atlanta Hartsfield–Jackson Intl
+TJSJ-SJU,KDEN-DEN # USA, Denver Intl
