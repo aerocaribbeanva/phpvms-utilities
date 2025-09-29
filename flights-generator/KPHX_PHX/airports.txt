@@ -1,0 +1,68 @@
+KPHX-PHX,MUHA-HAV  # Cuba, Havana José Martí Intl
+KPHX-PHX,TJSJ-SJU  # Puerto Rico, San Juan Luis Muñoz Marín Intl
+KPHX-PHX,KDFW-DFW  # USA, Dallas/Fort Worth Intl
+KPHX-PHX,KIAH-IAH  # USA, Houston George Bush Intercontinental
+KPHX-PHX,KHOU-HOU  # USA, Houston William P. Hobby
+KPHX-PHX,KSAT-SAT  # USA, San Antonio Intl
+KPHX-PHX,KAUS-AUS  # USA, Austin-Bergstrom Intl
+KPHX-PHX,KMSY-MSY  # USA, New Orleans Louis Armstrong Intl
+KPHX-PHX,KSTL-STL  # USA, St. Louis Lambert Intl
+KPHX-PHX,KOKC-OKC  # USA, Oklahoma City Will Rogers World Airport
+KPHX-PHX,KTUL-TUL  # USA, Tulsa Intl
+KPHX-PHX,KOMA-OMA  # USA, Omaha Eppley Airfield
+KPHX-PHX,KABQ-ABQ  # USA, Albuquerque Intl Sunport
+KPHX-PHX,KLIT-LIT  # USA, Little Rock Clinton National Airport
+KPHX-PHX,KCVG-CVG  # USA, Cincinnati/Northern Kentucky Intl
+KPHX-PHX,KCMH-CMH  # USA, John Glenn Columbus Intl
+KPHX-PHX,KMEM-MEM  # USA, Memphis Intl (Cargo Hub)
+KPHX-PHX,KLAX-LAX  # USA, Los Angeles Intl
+KPHX-PHX,KSFO-SFO  # USA, San Francisco Intl
+KPHX-PHX,KOAK-OAK  # USA, Oakland Intl
+KPHX-PHX,KSJC-SJC  # USA, San Jose Intl
+KPHX-PHX,KLGB-LGB  # USA, Long Beach Intl
+KPHX-PHX,KSAN-SAN  # USA, San Diego Intl
+KPHX-PHX,KLAS-LAS  # USA, Las Vegas Harry Reid Intl
+KPHX-PHX,KSEA-SEA  # USA, Seattle-Tacoma Intl
+KPHX-PHX,KPDX-PDX  # USA, Portland Intl
+KPHX-PHX,KRNO-RNO  # USA, Reno–Tahoe Intl
+KPHX-PHX,KONT-ONT  # USA, Ontario Intl
+KPHX-PHX,KBUR-BUR  # USA, Hollywood Burbank Airport
+KPHX-PHX,KSBA-SBA  # USA, Santa Barbara Airport
+KPHX-PHX,KBFL-BFL  # USA, Bakersfield Meadows Field
+KPHX-PHX,KFAT-FAT  # USA, Fresno Yosemite Intl
+KPHX-PHX,KSMF-SMF  # USA, Sacramento Intl
+KPHX-PHX,KMOD-MOD  # USA, Modesto City–County Airport
+KPHX-PHX,KSTS-STS  # USA, Charles M. Schulz–Sonoma County Airport
+KPHX-PHX,KSBP-SBP  # USA, San Luis Obispo County Airport
+KPHX-PHX,KCEC-CEC  # USA, Del Norte County Regional Airport
+KPHX-PHX,PANC-ANC  # USA, Anchorage Ted Stevens Intl
+KPHX-PHX,PAFA-FAI  # USA, Fairbanks Intl
+KPHX-PHX,PASI-SIT  # USA, Sitka Rocky Gutierrez Airport
+KPHX-PHX,PAJN-JNU  # USA, Juneau Intl
+KPHX-PHX,PAKT-KTN  # USA, Ketchikan Intl
+KPHX-PHX,PHNL-HNL  # USA, Honolulu Intl, Hawaii
+KPHX-PHX,PHOG-OGG  # USA, Kahului Airport, Maui
+KPHX-PHX,PGUM-GUM  # USA, Guam Intl (Pacific Territory)
+KPHX-PHX,CYVR-YVR  # Canada, Vancouver Intl
+KPHX-PHX,CYYC-YYC  # Canada, Calgary Intl
+KPHX-PHX,CYEG-YEG  # Canada, Edmonton Intl
+KPHX-PHX,CYWG-YWG  # Canada, Winnipeg Intl
+KPHX-PHX,CYXS-YXS  # Canada, Prince George Airport
+KPHX-PHX,CYXX-YXX  # Canada, Abbotsford Intl
+KPHX-PHX,CYCD-YCD  # Canada, Nanaimo Airport
+KPHX-PHX,MMMX-MEX  # Mexico City Intl (Benito Juárez)
+KPHX-PHX,MMMY-MTY  # Monterrey Intl (General Mariano Escobedo)
+KPHX-PHX,MMGL-GDL  # Guadalajara Intl (Miguel Hidalgo y Costilla)
+KPHX-PHX,MMPR-PVR  # Puerto Vallarta (Licenciado Gustavo Díaz Ordaz Intl)
+KPHX-PHX,MMLP-LAP  # La Paz Intl (Manuel Márquez de León)
+KPHX-PHX,MMSD-SJD  # San José del Cabo (Los Cabos Intl)
+KPHX-PHX,MMUN-CUN  # Cancún Intl
+KPHX-PHX,MMTO-TLC  # Toluca Intl
+KPHX-PHX,MMLO-BJX  # León/Guanajuato (Del Bajío Intl)
+KPHX-PHX,MMQT-QRO  # Querétaro Intl
+KPHX-PHX,MMCU-CUU  # Chihuahua Intl (General Roberto Fierro Villalobos)
+KPHX-PHX,MMHO-HMO  # Hermosillo (General Ignacio Pesqueira Garcia Intl)
+KPHX-PHX,MMCL-CUL  # Culiacán (Federal de Bachigualato Intl)
+KPHX-PHX,MMZH-ZIH  # Zihuatanejo/Ixtapa Intl
+KPHX-PHX,MMMD-MID  # Mérida (Manuel Crescencio Rejón Intl)
+KPHX-PHX,MMTM-TAM  # Tampico (General Francisco Javier Mina Intl)
