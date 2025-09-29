@@ -8,6 +8,12 @@ import argparse
 from datetime import datetime, timedelta
 import requests
 
+# Globals
+global AIRPORT_ICAO
+global ROUTE_CODE
+global IS_TOUR_MODE
+
+
 # Constants
 CACHE_FILE = "distance_cache.json"
 START_FLIGHT_NUMBER = 1000
@@ -16,6 +22,9 @@ TOKEN = os.getenv("AIRPORT_GAP_TOKEN")
 HEADERS = {"Authorization": f"Bearer token={TOKEN}"}
 TIME_FMT = '%H:%M'
 MAX_REQUESTS_PER_MIN = 100
+AIRPORT_ICAO = ""
+ROUTE_CODE = ""
+IS_TOUR_MODE = False
 
 special_code_to_airline = {
     "CRC" : "CRN"
@@ -117,7 +126,7 @@ def parse_airport_file(file_path):
     with open(file_path, 'r') as file:
         lines = file.read().strip().splitlines()
     pairs = []
-    for line in lines:
+    for indx,line in enumerate(lines):
         # if line has a comment ignore that comment
         if '#' in line:
             # save the line without the comment
@@ -125,6 +134,9 @@ def parse_airport_file(file_path):
         parts = line.split(',')
         a1_icao, a1_iata = parts[0].split('-')
         a2_icao, a2_iata = parts[1].split('-')
+        if not IS_TOUR_MODE:
+            if a1_icao != AIRPORT_ICAO and a1_iata != ROUTE_CODE:
+                raise ValueError(f"Invalid {a1_icao}-{a1_iata} found on {file_path} line {indx + 1} must be {AIRPORT_ICAO}-{ROUTE_CODE}")
         pairs.append(((a1_icao, a1_iata), (a2_icao, a2_iata)))
     return pairs
 
@@ -379,25 +391,25 @@ if __name__ == "__main__":
     parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
     args = parser.parse_args()
     AIRPORT_ICAO=args.airport_icao
-    route_code=args.route_code
-    is_tour_mode = AIRPORT_ICAO.upper() == "TOUR"
+    ROUTE_CODE=args.route_code
+    IS_TOUR_MODE = AIRPORT_ICAO.upper() == "TOUR"
     time_generated = time.strftime("%Y%m%d-%H%M%S")
-    if is_tour_mode:
+    if IS_TOUR_MODE:
         print("Tour mode")
-        os.makedirs(f"TOURS/{route_code}", exist_ok=True)
-        file_path = f"TOURS/{route_code}/legs.txt"
-        config_path = f"TOURS/{route_code}/config.csv"
+        os.makedirs(f"TOURS/{ROUTE_CODE}", exist_ok=True)
+        file_path = f"TOURS/{ROUTE_CODE}/legs.txt"
+        config_path = f"TOURS/{ROUTE_CODE}/config.csv"
         validate_file(file_path)
         pairs = parse_airport_file(file_path)
-        generate_flights(pairs,route_code,8000,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,parse_tour_config(config_path))
-        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True)
+        generate_flights(pairs,ROUTE_CODE,8000,f"DS_Tour_{ROUTE_CODE}_Legs_{time_generated}.csv",True,parse_tour_config(config_path))
+        update_subfleets(AIRPORT_ICAO,ROUTE_CODE,time_generated,f"DS_Tour_{ROUTE_CODE}_Legs_{time_generated}.csv",True)
     else:
         print("Schedules mode")
-        os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
-        file_path = f"{AIRPORT_ICAO}_{route_code}/airports.txt"
+        os.makedirs(f"{AIRPORT_ICAO}_{ROUTE_CODE}", exist_ok=True)
+        file_path = f"{AIRPORT_ICAO}_{ROUTE_CODE}/airports.txt"
         validate_file(file_path)
         pairs = parse_airport_file(file_path)
-        generate_flights(pairs, route_code, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
-        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
+        generate_flights(pairs, ROUTE_CODE, START_FLIGHT_NUMBER, f"{AIRPORT_ICAO}_{ROUTE_CODE}_{time_generated}_generated_phpvms_flights.csv")
+        update_subfleets(AIRPORT_ICAO,ROUTE_CODE,time_generated,f"{AIRPORT_ICAO}_{ROUTE_CODE}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
         # cleanup the file without subfleets
-        os.remove(f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
+        os.remove(f"{AIRPORT_ICAO}_{ROUTE_CODE}_{time_generated}_generated_phpvms_flights.csv")
