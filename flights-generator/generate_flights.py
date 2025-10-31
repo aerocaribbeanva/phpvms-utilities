@@ -7,6 +7,7 @@ import time
 import argparse
 from datetime import datetime, timedelta
 import requests
+import sys
 
 # Constants
 CACHE_FILE = "distance_cache.json"
@@ -35,6 +36,9 @@ airline_subfleet_by_flight_type = {
 
 aircrafts_range_by_icao = {'H60':'700','C402':'920','DHC6':'771','EC35':'342','EC45':'351','SH36F':'800','SH33F':'600','B734':'2060','B733':'2255','SH36':'800','SH33':'600','TRIS':'620','BN2P':'620','GA8':'730','MI8':'335','AN2':'450','A124':'3200','AT76F':'1000','E190F':'2300','C172':'600','B789':'7600','B78X':'6300','B762':'3900','BCS1':'3400','BCS3':'3300','A306':'4000','SU95':'2700','C208':'1000','B736':'3600','A225': '3900','A20N': '3500', 'A21N': '4000', 'A30F': '4200', 'A310': '5150', 'A319': '3700', 'A320': '3300', 'A321': '2300', 'A332': '7250', 'A333': '6350', 'A346': '7900', 'A359': '8100', 'A388': '8000', 'AN24': '1000', 'AN26': '1100', 'AT45': '850', 'AT46': '800', 'AT75': '825', 'AT76': '950', 'B38M': '3550', 'B48F': '4200', 'B712': '2060', 'B732': '2300', 'B735': '1600', 'B737': '3350', 'B738': '3400', 'B739': '3200', 'B744': '7260', 'B74F': '4970', 'B752': '3900', 'B753': '3800', 'B75F': '3600', 'B763': '6000', 'B764': '6000', 'B76F': '3255', 'B77F': '8555', 'B77L': '8555', 'B77W': '7370', 'B788': '7355', 'C25C': '2165', 'DH8D': '1100', 'E110': '1200', 'E140': '1600', 'E145': '1550', 'E175': '2000', 'E190': '2400', 'E195': '2200', 'IL18': '2200', 'IL96': '6000', 'KODI': '1132', 'L410': '800', 'MD1F': '3800', 'PC12': '1845', 'TBM9': '1730', 'YK40': '1000'}
 
+def _auto_yes():
+    # --yes flag set in argparse below, or CI env present
+    return getattr(sys.modules[__name__], "_assume_yes", False) or os.environ.get("CI") == "true"
 
 def calculate_flight_times(distance_nm):
     dpt_hour = random.randint(5, 22)
@@ -340,15 +344,28 @@ def validate_file(file_path):
         with open(file_path, "r", encoding="utf-8") as file:
             print(file.read())
         print("-" * 50)
-        
-        # Ask user for confirmation
-        user_input = input("\nDo you want to continue? (Y/N): ").strip().lower()
-        if user_input != 'y':
+
+        # Ask user for confirmation (non-interactive friendly)
+        if _auto_yes():
+            print("CI/--yes detected → proceeding without prompt.")
+            return
+
+        try:
+            user_input = input("\nDo you want to continue? (Y/N): ").strip().lower()
+        except EOFError:
+            # No TTY; default to 'yes' in CI, otherwise abort
+            if _auto_yes():
+                print("No TTY, CI mode → proceeding.")
+                return
+            print("❌ No TTY available and not in CI/--yes mode. Aborting.")
+            sys.exit(1)
+
+        if user_input not in ('y', 'yes'):
             print("❌ Execution aborted by user.")
-            exit(1)
+            sys.exit(1)
     else:
         print(f"❌ File not found: {file_path}")
-        exit(1)
+        sys.exit(1)
 
 def parse_tour_config(config_path):
     config = {}
@@ -377,7 +394,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
     parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA)")
     parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
+    parser.add_argument("--yes", "-y", action="store_true",help="Proceed without interactive confirmation")
     args = parser.parse_args()
+    _assume_yes = args.yes  # makes --yes visible to _auto_yes()
     AIRPORT_ICAO=args.airport_icao
     route_code=args.route_code
     is_tour_mode = AIRPORT_ICAO.upper() == "TOUR"

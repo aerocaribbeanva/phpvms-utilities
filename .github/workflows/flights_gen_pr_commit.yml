@@ -2,7 +2,7 @@ name: Run Python Script and Commit to PR
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened]
 
 permissions:
   contents: write
@@ -71,7 +71,8 @@ jobs:
           for t in "${!tours[@]}"; do
             if [[ -f "TOURS/$t/legs.txt" && -f "TOURS/$t/config.csv" ]]; then
               echo "Generating flights for TOUR $t..."
-              python generate_flights.py TOUR "$t"
+              # --yes ensures non-interactive; CI env is already true in Actions
+              python generate_flights.py TOUR "$t" --yes
             else
               echo "Skipping $t (missing legs.txt or config.csv)"
             fi
