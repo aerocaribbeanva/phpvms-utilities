@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   run_and_commit:
+    if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     environment: flight-gen
     steps:
@@ -27,16 +28,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies (optional)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Force a detectable change (test)
-        run: |
-          mkdir -p .github/ci
-          echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') $RANDOM" > .github/ci/last-run.txt
-          cat .github/ci/last-run.txt
 
       # >>> NEW STEP: detect changed tours and run the generator
       - name: Run flight generator for changed tours
