@@ -34,6 +34,19 @@ jobs:
       - name: Run Python script
         run: echo "Hello from Github Actions" > test.txt
 
+      - name: Force a detectable change (test)
+        run: |
+          mkdir -p .github/ci
+          # Write a timestamp and a random suffix so the file always changes
+          echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') $RANDOM" > .github/ci/last-run.txt
+          cat .github/ci/last-run.txt
+
+      - name: Show git status (debug)
+        run: |
+          git status
+          echo "---- DIFF (unstaged) ----"
+          git diff -- .github/ci/last-run.txt || true
+
       - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
