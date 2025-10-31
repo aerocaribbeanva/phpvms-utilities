@@ -2,7 +2,7 @@ name: Run Python Script and Commit to PR
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened]
 
 permissions:
   contents: write
