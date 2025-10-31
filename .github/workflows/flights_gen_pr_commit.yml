@@ -2,34 +2,99 @@ name: Run Python Script and Commit to PR
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   run_and_commit:
     runs-on: ubuntu-latest
+    environment: flight-gen
     steps:
-      - name: Checkout code
+      - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Use GITHUB_TOKEN for authentication
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x' # Specify your desired Python version
+          python-version: '3.x'
 
       - name: Install dependencies (optional)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # If your script has dependencies
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run Python script
-        run: echo "Hello from Github Actions" >> test.txt # Replace with your script name
+      - name: Force a detectable change (test)
+        run: |
+          mkdir -p .github/ci
+          echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') $RANDOM" > .github/ci/last-run.txt
+          cat .github/ci/last-run.txt
 
-      - name: Configure Git and Commit Changes
+      # >>> NEW STEP: detect changed tours and run the generator
+      - name: Run flight generator for changed tours
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Fetch the PR base commit (works even when PR is from a fork)
+          git fetch --no-tags --depth=1 \
+            https://github.com/${{ github.event.pull_request.base.repo.full_name }} \
+            ${{ github.event.pull_request.base.sha }}
+
+          BASE="${{ github.event.pull_request.base.sha }}"
+          CHANGED="$(git diff --name-only "$BASE"...HEAD || true)"
+
+          declare -A tours=()
+          while IFS= read -r f; do
+            [[ -z "${f:-}" ]] && continue
+            if [[ "$f" =~ ^flights-generator/TOURS/([A-Za-z0-9]{4})/(legs\.txt|config\.csv)$ ]]; then
+              tours["${BASH_REMATCH[1]}"]=1
+            fi
+          done <<< "$CHANGED"
+
+          if [ ${#tours[@]} -eq 0 ]; then
+            echo "No tour changes detected."
+            exit 0
+          fi
+
+          pushd flights-generator >/dev/null
+          for t in "${!tours[@]}"; do
+            if [[ -f "TOURS/$t/legs.txt" && -f "TOURS/$t/config.csv" ]]; then
+              echo "Generating flights for TOUR $t..."
+              python generate_flights.py TOUR "$t"
+            else
+              echo "Skipping $t (missing legs.txt or config.csv)"
+            fi
+          done
+          popd >/dev/null
+      # <<< END NEW STEP
+
+      - name: Show git status (debug)
+        run: |
+          git status
+          echo "---- DIFF (unstaged) ----"
+          git diff -- .github/ci/last-run.txt || true
+
+      - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add . # Add any modified files
-          git commit -m "Automated commit from Python script" || echo "No changes to commit"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Automated commit from workflow"
           git push
