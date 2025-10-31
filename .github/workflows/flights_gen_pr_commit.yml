@@ -11,6 +11,7 @@ permissions:
 jobs:
   run_and_commit:
     runs-on: ubuntu-latest
+    environment: flight-gen
     steps:
       - name: Checkout PR head branch
         uses: actions/checkout@v4
@@ -31,15 +32,52 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run Python script
-        run: echo "Hello from Github Actions" > test.txt
-
       - name: Force a detectable change (test)
         run: |
           mkdir -p .github/ci
-          # Write a timestamp and a random suffix so the file always changes
           echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') $RANDOM" > .github/ci/last-run.txt
           cat .github/ci/last-run.txt
+
+      # >>> NEW STEP: detect changed tours and run the generator
+      - name: Run flight generator for changed tours
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Fetch the PR base commit (works even when PR is from a fork)
+          git fetch --no-tags --depth=1 \
+            https://github.com/${{ github.event.pull_request.base.repo.full_name }} \
+            ${{ github.event.pull_request.base.sha }}
+
+          BASE="${{ github.event.pull_request.base.sha }}"
+          CHANGED="$(git diff --name-only "$BASE"...HEAD || true)"
+
+          declare -A tours=()
+          while IFS= read -r f; do
+            [[ -z "${f:-}" ]] && continue
+            if [[ "$f" =~ ^flights-generator/TOURS/([A-Za-z0-9]{4})/(legs\.txt|config\.csv)$ ]]; then
+              tours["${BASH_REMATCH[1]}"]=1
+            fi
+          done <<< "$CHANGED"
+
+          if [ ${#tours[@]} -eq 0 ]; then
+            echo "No tour changes detected."
+            exit 0
+          fi
+
+          pushd flights-generator >/dev/null
+          for t in "${!tours[@]}"; do
+            if [[ -f "TOURS/$t/legs.txt" && -f "TOURS/$t/config.csv" ]]; then
+              echo "Generating flights for TOUR $t..."
+              python generate_flights.py TOUR "$t"
+            else
+              echo "Skipping $t (missing legs.txt or config.csv)"
+            fi
+          done
+          popd >/dev/null
+      # <<< END NEW STEP
 
       - name: Show git status (debug)
         run: |
@@ -56,5 +94,7 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
+          echo "About to commit:"
+          git diff --cached --name-only
           git commit -m "Automated commit from workflow"
           git push
