@@ -35,46 +35,88 @@ Each route pair generates **4 flights**:
 
 ---
 
-### 🧭 Tour Mode:
+### ▶️ Triggering the Tour Generator via Pull Request
 
-```bash
-python generate_flights.py TOUR TOURCODE
-```
+This repo auto-generates phpVMS tour flights **when you open or update a PR** that adds/changes a tour under `flights-generator/TOURS/XXXX/`. The workflow will **only run for non-draft PRs** and when both required files exist.
 
-Example:
-
-```bash
-python generate_flights.py TOUR RPCT
-```
-
-**Folder Structure:**
+#### 1) Create the tour folder (4-char code)
+Use an alphanumeric **4-character** tour code (e.g., `RPCT`, `PR22`) and add the two required files:
 
 ```
-TOURS/
-└── RPCT/
-    ├── legs.txt         # Required (same format as airports.txt, 1 leg per line)
-    └── config.csv       # Required (see below)
+flights-generator/
+└── TOURS/
+    └── RPCT/
+        ├── legs.txt      # Required (same format as airports.txt, 1 leg per line)
+        └── config.csv    # Required (see columns below)
 ```
 
-**`legs.txt` example:**
+**`legs.txt` format (one leg per line; comments with `#` allowed):**
 ```
 MUHA-HAV,MMAA-ACA
 MMAA-ACA,MMTP-TAP
-...
+# This is a comment
+MMTP-TAP,MSLP-SAL
 ```
 
-**`config.csv` required columns:**
+**`config.csv` required columns (one row):**
 
-| flight_type | pilot_pay | notes                  | start_flight_number | start_date   | end_date     |
-|-------------|------------|------------------------|----------------------|--------------|--------------|
-| J           |            | Ruta del Pacifico 2025 | 8050                 | 2025-09-01   | 2025-10-30   |
+| flight_type | pilot_pay | notes                  | start_flight_number | start_date | end_date   |
+|-------------|-----------|------------------------|---------------------|------------|------------|
+| J           |           | Ruta del Pacifico 2025 | 8050                | 2025-09-01 | 2025-10-30 |
 
-- `flight_type`: Use `J` (passenger) or `F` (freighter)
-- `start_flight_number`: First flight number in tour (default `8000`)
-- `start_date` and `end_date`: Mandatory tour date range
-- `pilot_pay` and `notes`: Optional
+- `flight_type`: `J` (passenger) or `F` (freighter)  
+- `start_flight_number`: first number for the tour (defaults to `8000` if omitted/invalid)  
+- `start_date`, `end_date`: required, `YYYY-MM-DD`  
+- `pilot_pay`, `notes`: optional (`notes` accepts HTML; we wrap it in `<p>…</p>`)
 
-Each leg generates **1 flight** with sequential numbering and the tour code as `route_code`.
+> Each **leg** produces **one tour flight**; flights are numbered sequentially and use the tour code as `route_code`.
+
+#### 2) (Optional) Run locally
+
+```bash
+# From repo root
+python generate_flights.py TOUR RPCT
+```
+
+This validates `legs.txt` (checks duplicates), loads config, and writes generated CSVs to `flights-generator/TOURS/RPCT/…` including a `DS_Tour_RPCT_Legs.csv` for easy review.
+
+#### 3) Commit and open a PR
+
+```bash
+git checkout -b feature/tour-RPCT
+git add flights-generator/TOURS/RPCT/legs.txt flights-generator/TOURS/RPCT/config.csv
+git commit -m "Add RPCT tour"
+git push -u origin feature/tour-RPCT
+# Open a PR (make sure it's NOT a draft)
+```
+
+- As soon as the PR is **Ready for review**, the workflow runs.  
+- The workflow executes the generator with `--yes` (non-interactive) and **commits** any outputs back to your PR branch.
+
+#### 4) Verify the results
+
+- Check the PR **Checks** tab for the workflow logs.  
+- The action commits generated files (e.g., `TOURS/RPCT/DS_Tour_RPCT_Legs.csv` and timestamped exports) to your PR.  
+- If you push more changes to `legs.txt` or `config.csv`, the workflow reruns automatically.
+
+---
+
+#### Notes & Tips
+
+- **Tour code** must be exactly **4 alphanumeric chars** (`[A-Za-z0-9]{4}`).  
+- **Secrets:** The workflow uses the `AIRPORT_GAP_TOKEN` secret (via the `flight-gen` environment). For PRs from **forks**, a maintainer may need to approve the run so secrets are available.  
+- **Caching:** Distances are cached in `distance_cache.json` to reduce API calls.  
+- **Non-interactive CI:** The workflow passes `--yes` to avoid blocking on prompts.  
+- **Rate limits:** If the API returns 429s, the script backs off and retries automatically.
+
+#### Troubleshooting
+
+- **“No tour changes detected.”** Ensure you modified files under `flights-generator/TOURS/XXXX/` and your PR isn’t a draft.  
+- **“Skipping XXXX (missing legs.txt or config.csv)”** Make sure **both** files exist in that tour folder.  
+- **“Duplicate entries found…”** Remove duplicate legs in `legs.txt`. Comments are fine, but duplicates abort generation.  
+- **“Failed to fetch distance (401/403)”** Verify `AIRPORT_GAP_TOKEN` is configured in the `flight-gen` environment and available to the PR run (forks may require approval).  
+- **Nothing committed back** Confirm the workflow is checking out the **PR head branch** and that files weren’t excluded by `.gitignore`. The workflow prints a file list before committing.
+
 
 ---
 
