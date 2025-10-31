@@ -32,7 +32,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run Python script
-        run: echo "Hello from Github Actions" >> test.txt
+        run: echo "Hello from Github Actions" > test.txt
 
       - name: Commit and push changes (if any)
         run: |
