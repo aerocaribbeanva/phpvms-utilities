@@ -2,34 +2,46 @@ name: Run Python Script and Commit to PR
 
 on:
   pull_request:
-    types: [opened,synchronize]
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   run_and_commit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Use GITHUB_TOKEN for authentication
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x' # Specify your desired Python version
+          python-version: '3.x'
 
       - name: Install dependencies (optional)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # If your script has dependencies
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run Python script
-        run: echo "Hello from Github Actions" >> test.txt # Replace with your script name
+        run: echo "Hello from Github Actions" >> test.txt
 
-      - name: Configure Git and Commit Changes
+      - name: Commit and push changes (if any)
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add . # Add any modified files
-          git commit -m "Automated commit from Python script" || echo "No changes to commit"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Automated commit from workflow"
           git push
