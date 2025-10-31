@@ -1,0 +1,4 @@
+airline,flight_number,route_code,callsign,route_leg,dpt_airport,arr_airport,alt_airport,days,dpt_time,arr_time,level,distance,flight_time,flight_type,load_factor,load_factor_variance,pilot_pay,route,notes,start_date,end_date,active,subfleets,fares,fields,event_id,user_id
+CRN,8080,PRTP,,1,TJSJ,TJVQ,,1234567,11:00,11:07,,38,7,J,,,,,<p>Island Turbo Props</p>,2025-10-30 00:00:00,2026-12-31 00:00:00,0,,,,,
+CRN,8081,PRTP,,2,TJVQ,TIST,,1234567,21:45,21:50,,28,5,J,,,,,<p>Island Turbo Props</p>,2025-10-30 00:00:00,2026-12-31 00:00:00,0,,,,,
+CRN,8082,PRTP,,3,TIST,TJCP,,1234567,13:30,13:33,,18,3,J,,,,,<p>Island Turbo Props</p>,2025-10-30 00:00:00,2026-12-31 00:00:00,0,,,,,
