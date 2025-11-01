@@ -168,7 +168,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         notes = tour_config.get("notes", "").strip()
         start_date = tour_config.get("start_date","").strip()
         end_date = tour_config.get("end_date","").strip()
-        filter_subfleets = tour_config.get("subfleet",[])
+        filter_subfleets = tour_config.get("subfleets",[])
         if len(filter_subfleets) > 0:
             print("---TOUR SUBFLEET---")
             print(filter_subfleets)
