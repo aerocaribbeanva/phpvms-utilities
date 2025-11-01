@@ -10,6 +10,7 @@ import requests
 import sys
 
 # Constants
+GLOB_FILTER_SUBFLEETS = []
 CACHE_FILE = "distance_cache.json"
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
@@ -167,6 +168,10 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         notes = tour_config.get("notes", "").strip()
         start_date = tour_config.get("start_date","").strip()
         end_date = tour_config.get("end_date","").strip()
+        filter_subfleets = tour_config.get("subfleet","").strip()
+        if filter_subfleets != "":
+            global GLOB_FILTER_SUBFLEETS
+            GLOB_FILTER_SUBFLEETS = filter_subfleets.split(';')
 
         for leg_number, ((a1_icao, a1_iata), (a2_icao, a2_iata)) in enumerate(pairs, start=1):
             if requests_made >= MAX_REQUESTS_PER_MIN:
@@ -267,7 +272,7 @@ def split(filehandler, delimiter=',', row_limit=1000,
 def remove_non_numeric(text):
     return "".join(filter(str.isdigit, text))
 
-def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False):
+def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False,filter_subfleets=[]):
     # Read and update CSV
     with open(CSV_INPUT, 'r', newline='', encoding='utf-8') as csvfile_in:
         reader = csv.DictReader(csvfile_in)
@@ -288,7 +293,12 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
         subfleets = []
         for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
                 if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
-                    subfleets.append(aircraft_icao)
+                    if (len(filter_subfleets) > 0) and (aircraft_icao in filter_subfleets):
+                        # if filter subfleet is passed check if aircraft is in list
+                        subfleets.append(aircraft_icao)
+                    else:
+                        # if no subfleet filter is passed just add the aircraft
+                        subfleets.append(aircraft_icao)
         row['subfleets'] = ';'.join(subfleets)
 
     
@@ -409,7 +419,7 @@ if __name__ == "__main__":
         validate_file(file_path)
         pairs = parse_airport_file(file_path)
         generate_flights(pairs,route_code,8000,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,parse_tour_config(config_path))
-        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True)
+        update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,filter_subfleets=GLOB_FILTER_SUBFLEETS)
     else:
         print("Schedules mode")
         os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
