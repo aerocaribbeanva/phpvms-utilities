@@ -2,7 +2,11 @@ name: Run Python Script and Commit to PR
 
 on:
   pull_request:
-    types: [opened,synchronize,ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'flights-generator/TOURS/**/legs.txt'
+      - 'flights-generator/TOURS/**/config.csv'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -33,7 +37,6 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # >>> NEW STEP: detect changed tours and run the generator
       - name: Run flight generator for changed tours
         env:
           AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
@@ -41,17 +44,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Fetch the PR base commit (works even when PR is from a fork)
-          git fetch --no-tags --depth=1 \
-            https://github.com/${{ github.event.pull_request.base.repo.full_name }} \
-            ${{ github.event.pull_request.base.sha }}
+          # Ensure we have the base branch (e.g., main) to diff against
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref }}"
+          BASE_REF="origin/main"
 
-          BASE="${{ github.event.pull_request.base.sha }}"
-          CHANGED="$(git diff --name-only "$BASE"...HEAD || true)"
+          # List files changed between PR head and base branch
+          CHANGED="$(git diff --name-only "$BASE_REF"...HEAD || true)"
 
           declare -A tours=()
           while IFS= read -r f; do
             [[ -z "${f:-}" ]] && continue
+            # Match exactly the two required files under a 4-char dir
             if [[ "$f" =~ ^flights-generator/TOURS/([A-Za-z0-9]{4})/(legs\.txt|config\.csv)$ ]]; then
               tours["${BASH_REMATCH[1]}"]=1
             fi
@@ -66,14 +69,15 @@ jobs:
           for t in "${!tours[@]}"; do
             if [[ -f "TOURS/$t/legs.txt" && -f "TOURS/$t/config.csv" ]]; then
               echo "Generating flights for TOUR $t..."
-              # --yes ensures non-interactive; CI env is already true in Actions
+              # Use --yes if you added it; otherwise pipe Y
               python generate_flights.py TOUR "$t" --yes
+              # or: printf 'Y\n' | python generate_flights.py TOUR "$t"
             else
               echo "Skipping $t (missing legs.txt or config.csv)"
             fi
           done
           popd >/dev/null
-      # <<< END NEW STEP
+
 
       - name: Show git status (debug)
         run: |
