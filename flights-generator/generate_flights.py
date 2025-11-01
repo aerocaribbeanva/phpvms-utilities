@@ -172,6 +172,8 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         if filter_subfleets != "":
             global GLOB_FILTER_SUBFLEETS
             GLOB_FILTER_SUBFLEETS = filter_subfleets.split(';')
+            print("READ GLOB FILTER")
+            print(GLOB_FILTER_SUBFLEETS)
 
         for leg_number, ((a1_icao, a1_iata), (a2_icao, a2_iata)) in enumerate(pairs, start=1):
             if requests_made >= MAX_REQUESTS_PER_MIN:
@@ -293,6 +295,8 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
         subfleets = []
         for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
                 if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
+                    print("FILTER SUBLFEET RECEIVED BY SUBFLEER ADDER")
+                    print(filter_subfleets)
                     if len(filter_subfleets) > 0:
                         # if filter subfleet is passed only add aircraft if is in list
                         if (aircraft_icao in filter_subfleets):
