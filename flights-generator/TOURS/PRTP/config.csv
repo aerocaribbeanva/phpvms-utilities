@@ -1,2 +1,2 @@
-flight_type,pilot_pay,notes,start_flight_number,start_date,end_date
-J,,Island Turbo Props,8080,2025-10-30,2026-12-31
+flight_type,pilot_pay,notes,start_flight_number,start_date,end_date,subfleet
+J,450,Island Hop Turbo Props,8080,2025-10-30,2026-12-31,C172;KODI
