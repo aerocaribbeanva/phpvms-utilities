@@ -10,7 +10,7 @@ import requests
 import sys
 
 # Constants
-GLOB_FILTER_SUBFLEETS = []
+GLOB_FILTER_SUBFLEETS=[]
 CACHE_FILE = "distance_cache.json"
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
@@ -168,11 +168,11 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         notes = tour_config.get("notes", "").strip()
         start_date = tour_config.get("start_date","").strip()
         end_date = tour_config.get("end_date","").strip()
-        filter_subfleets = tour_config.get("subfleet","").strip()
-        if filter_subfleets != "":
+        filter_subfleets = tour_config.get("subfleet",[])
+        if len(filter_subfleets) > 0:
             global GLOB_FILTER_SUBFLEETS
-            GLOB_FILTER_SUBFLEETS = filter_subfleets.split(';')
-            print("READ GLOB FILTER")
+            GLOB_FILTER_SUBFLEETS = filter_subfleets
+            print("---TOUR SUBFLEET---")
             print(GLOB_FILTER_SUBFLEETS)
 
         for leg_number, ((a1_icao, a1_iata), (a2_icao, a2_iata)) in enumerate(pairs, start=1):
@@ -274,7 +274,7 @@ def split(filehandler, delimiter=',', row_limit=1000,
 def remove_non_numeric(text):
     return "".join(filter(str.isdigit, text))
 
-def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False,filter_subfleets=[]):
+def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False,filter_subfleet=[]):
     # Read and update CSV
     with open(CSV_INPUT, 'r', newline='', encoding='utf-8') as csvfile_in:
         reader = csv.DictReader(csvfile_in)
@@ -294,16 +294,15 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
         flight_type = row["flight_type"] 
         subfleets = []
         for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
-                if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
-                    print("FILTER SUBLFEET RECEIVED BY SUBFLEER ADDER")
-                    print(filter_subfleets)
-                    if len(filter_subfleets) > 0:
-                        # if filter subfleet is passed only add aircraft if is in list
-                        if (aircraft_icao in filter_subfleets):
-                            subfleets.append(aircraft_icao)
-                    else:
-                        # if no subfleet filter is passed just add the aircraft
+            if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
+                if len(filter_subfleets) > 0:
+                    if (aircraft_icao in filter_subfleets):
+                        # if filter subfleet is passed only add aircraft if is in list               
                         subfleets.append(aircraft_icao)
+                else:
+                    # if no subfleet filter is passed just add the aircraft
+                    subfleets.append(aircraft_icao)
+                
         row['subfleets'] = ';'.join(subfleets)
 
     
@@ -402,6 +401,11 @@ def parse_tour_config(config_path):
         config['start_flight_number'] = first_row.get('start_flight_number', '8000').strip()
         config['start_date'] = f"{first_row.get('start_date').strip()} 00:00:00"
         config['end_date'] = f"{first_row.get('end_date').strip()} 00:00:00"
+        filter_subfleets = first_row.get('subfleets', '').strip().upper()
+        if filter_subfleets != '':
+            config['subfleets'] = filter_subfleets.split(';')
+        else:
+            config['subfleets'] = []
     return config
 
 # Example usage (uncomment to run):
