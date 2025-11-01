@@ -293,9 +293,10 @@ def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mo
         subfleets = []
         for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
                 if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
-                    if (len(filter_subfleets) > 0) and (aircraft_icao in filter_subfleets):
-                        # if filter subfleet is passed check if aircraft is in list
-                        subfleets.append(aircraft_icao)
+                    if len(filter_subfleets) > 0:
+                        # if filter subfleet is passed only add aircraft if is in list
+                        if (aircraft_icao in filter_subfleets):
+                            subfleets.append(aircraft_icao)
                     else:
                         # if no subfleet filter is passed just add the aircraft
                         subfleets.append(aircraft_icao)
