@@ -46,7 +46,7 @@ jobs:
 
           # Ensure we have the base branch (e.g., main) to diff against
           git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref }}"
-          BASE_REF="origin/main"
+          BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
 
           # List files changed between PR head and base branch
           CHANGED="$(git diff --name-only "$BASE_REF"...HEAD || true)"
