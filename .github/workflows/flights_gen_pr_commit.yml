@@ -37,24 +37,44 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Run flight generator for changed tours
-        env:
-          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+      - name: Detect changed tours (works with forks & unrelated histories)
         shell: bash
         run: |
           set -euo pipefail
 
-          # Ensure we have the base branch (e.g., main) to diff against
-          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.ref }}"
-          BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          echo "Base repo:  ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "Base ref:   ${{ github.event.pull_request.base.ref }}"
+          echo "Base SHA:   ${{ github.event.pull_request.base.sha }}"
+          echo "Head repo:  ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Head ref:   ${{ github.event.pull_request.head.ref }}"
+          echo "Head SHA:   ${{ github.event.pull_request.head.sha }}"
 
-          # List files changed between PR head and base branch
-          CHANGED="$(git diff --name-only "$BASE_REF"...HEAD || true)"
+          # Add remote for the BASE repo and fetch the exact BASE commit
+          git remote add base "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.base.repo.full_name }}" || true
+          git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.sha }}:refs/remotes/base/pr_base || {
+            echo "Exact base SHA fetch failed; fetching base ref instead..."
+            git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.ref }}:refs/remotes/base/pr_base
+          }
+
+          echo "Base tip:"
+          git log --oneline -1 base/pr_base || true
+          echo "PR head tip:"
+          git log --oneline -1 HEAD || true
+
+          # Prefer three-dot (merge-base) diff; fall back to two-dot if histories are unrelated
+          if git merge-base --is-ancestor base/pr_base HEAD 2>/dev/null || git merge-base base/pr_base HEAD >/dev/null 2>&1; then
+            echo "Using three-dot diff (base/pr_base...HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base...HEAD || true)"
+          else
+            echo "No merge base; using two-dot diff (base/pr_base..HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base..HEAD || true)"
+          fi
+
+          printf '%s\n' "$CHANGED" | sed 's/^/changed: /'
 
           declare -A tours=()
           while IFS= read -r f; do
             [[ -z "${f:-}" ]] && continue
-            # Match exactly the two required files under a 4-char dir
             if [[ "$f" =~ ^flights-generator/TOURS/([A-Za-z0-9]{4})/(legs\.txt|config\.csv)$ ]]; then
               tours["${BASH_REMATCH[1]}"]=1
             fi
@@ -65,18 +85,19 @@ jobs:
             exit 0
           fi
 
+          echo "Tours detected: ${!tours[@]}"
+
           pushd flights-generator >/dev/null
           for t in "${!tours[@]}"; do
             if [[ -f "TOURS/$t/legs.txt" && -f "TOURS/$t/config.csv" ]]; then
               echo "Generating flights for TOUR $t..."
-              # Use --yes if you added it; otherwise pipe Y
               python generate_flights.py TOUR "$t" --yes
-              # or: printf 'Y\n' | python generate_flights.py TOUR "$t"
             else
               echo "Skipping $t (missing legs.txt or config.csv)"
             fi
           done
           popd >/dev/null
+
 
 
       - name: Show git status (debug)
