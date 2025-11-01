@@ -274,7 +274,7 @@ def split(filehandler, delimiter=',', row_limit=1000,
 def remove_non_numeric(text):
     return "".join(filter(str.isdigit, text))
 
-def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False,filter_subfleet=[]):
+def update_subfleets(airport_icao,route_code,time_generated,CSV_INPUT,is_tour_mode=False,filter_subfleets=[]):
     # Read and update CSV
     with open(CSV_INPUT, 'r', newline='', encoding='utf-8') as csvfile_in:
         reader = csv.DictReader(csvfile_in)
