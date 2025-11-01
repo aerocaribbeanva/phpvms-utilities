@@ -170,10 +170,10 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         end_date = tour_config.get("end_date","").strip()
         filter_subfleets = tour_config.get("subfleet",[])
         if len(filter_subfleets) > 0:
+            print("---TOUR SUBFLEET---")
+            print(filter_subfleets)
             global GLOB_FILTER_SUBFLEETS
             GLOB_FILTER_SUBFLEETS = filter_subfleets
-            print("---TOUR SUBFLEET---")
-            print(GLOB_FILTER_SUBFLEETS)
 
         for leg_number, ((a1_icao, a1_iata), (a2_icao, a2_iata)) in enumerate(pairs, start=1):
             if requests_made >= MAX_REQUESTS_PER_MIN:
