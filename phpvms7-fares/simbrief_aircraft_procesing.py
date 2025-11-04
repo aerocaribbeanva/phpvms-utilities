@@ -319,7 +319,7 @@ def process_aircraft_data():
                 nairframe_type = nairframe.get("airframe_base_type")
                 noptions = nairframe.get("airframe_options",{})
                 if aircraft_name != nairframe_name:
-                    naircraft_id = f"{nairframe_icao}{nairframe_name.replace(aircraft_name,'')}"
+                    naircraft_id = f"{nairframe_icao}F"
                     if naircraft_id not in processed.keys():
                         # Extract weight and passenger data
                         try:

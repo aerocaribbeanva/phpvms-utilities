@@ -1,0 +1,112 @@
+[
+    {
+        "icao": "AEST",
+        "aircraft_name": "Aerostar 600",
+        "base_type": "AEST",
+        "default_pax": 5,
+        "mzfw_lbs": 5500.0,
+        "oei_lbs": 4080.0,
+        "CGO": 545.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "R722",
+        "aircraft_name": "B727-200 Super 27",
+        "base_type": "R722",
+        "default_pax": 155,
+        "mzfw_lbs": 144000.0,
+        "oei_lbs": 101756.0,
+        "CGO": 15119.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "B741",
+        "aircraft_name": "B747-100B",
+        "base_type": "B742",
+        "default_pax": 366,
+        "mzfw_lbs": 526500.0,
+        "oei_lbs": 381480.0,
+        "CGO": 80970.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "BE9L",
+        "aircraft_name": "King Air C90B",
+        "base_type": "BE9L",
+        "default_pax": 7,
+        "mzfw_lbs": 10100.0,
+        "oei_lbs": 6536.0,
+        "CGO": 2339.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "BT36",
+        "aircraft_name": "Bonanza B36TC",
+        "base_type": "BT36",
+        "default_pax": 5,
+        "mzfw_lbs": 4030.0,
+        "oei_lbs": 2215.0,
+        "CGO": 940.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "B36T",
+        "aircraft_name": "Bonanza B36TP",
+        "base_type": "B36T",
+        "default_pax": 5,
+        "mzfw_lbs": 4050.0,
+        "oei_lbs": 2355.0,
+        "CGO": 820.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "B58T",
+        "aircraft_name": "Baron 58P",
+        "base_type": "B58T",
+        "default_pax": 5,
+        "mzfw_lbs": 6200.0,
+        "oei_lbs": 4010.0,
+        "CGO": 1315.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "FA8X",
+        "aircraft_name": "Falcon 8X",
+        "base_type": "FA8X",
+        "default_pax": 14,
+        "mzfw_lbs": 41000.0,
+        "oei_lbs": 37000.0,
+        "CGO": 1550.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "GLF6",
+        "aircraft_name": "GLF.VI G650",
+        "base_type": "GLF6",
+        "default_pax": 13,
+        "mzfw_lbs": 60500.0,
+        "oei_lbs": 54500.0,
+        "CGO": 3725.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "STAR",
+        "aircraft_name": "Starship 2000A",
+        "base_type": "STAR",
+        "default_pax": 6,
+        "mzfw_lbs": 12600.0,
+        "oei_lbs": 10085.0,
+        "CGO": 1465.0,
+        "is_freighter": false
+    },
+    {
+        "icao": "YS11",
+        "aircraft_name": "NAMC YS-11",
+        "base_type": "YS11",
+        "default_pax": 60,
+        "mzfw_lbs": 49600.0,
+        "oei_lbs": 32811.0,
+        "CGO": 6289.0,
+        "is_freighter": false
+    }
+]

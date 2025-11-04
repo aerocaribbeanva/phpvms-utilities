@@ -5,8 +5,8 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-9-26-25.csv'
-JSON_INPUT = 'aircraft_data_20250705_084347.json'
+CSV_INPUT = 'subfleets-11-4-25.csv'
+JSON_INPUT = 'aircraft_data_20251104_095617.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 
@@ -28,8 +28,21 @@ CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 # }
 
 custom_fare_data = {
+        "AN26" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1741417583325",    
+            "icao": "AN26",
+            "aircraft_name": "Antonov AN-26B-100",
+            "base_type": "DH8C",
+            "default_pax": 30,
+            "mzfw_lbs": 52911.0,
+            "oei_lbs": 36376,
+            "is_freighter": False,
+            "F": 0,
+            "J": 0,
+            "Y": 30
+        },
         "E190F" : {
-            "simbrief_profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749676018149",    
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749676018149",    
             "icao": "E190",
             "aircraft_name": "Embraer E190F",
             "base_type": "E190",
@@ -194,6 +207,32 @@ custom_fare_data = {
             "oei_lbs": 11032.0,
             "is_freighter": False,
             "F": 6,
+            "J": 0,
+            "Y": 0
+        }
+            "AN26F" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1762279919058",    
+            "icao": "AN26",
+            "aircraft_name": "Antonov AN-26B-100 Freighter",
+            "base_type": "DH8C",
+            "default_pax": 0,
+            "mzfw_lbs": 52911.0,
+            "oei_lbs": 36376.0,
+            "is_freighter": True,
+            "F": 0,
+            "J": 0,
+            "Y": 0
+        },
+            "A333F" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1762277064188",    
+            "icao": "A333",
+            "aircraft_name": "A330-300 Freighter",
+            "base_type": "A333",
+            "default_pax": 3,
+            "mzfw_lbs": 374785.0,
+            "oei_lbs": 266759.0,
+            "is_freighter": True,
+            "F": 0,
             "J": 0,
             "Y": 0
         }
