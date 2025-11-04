@@ -429,6 +429,8 @@ if __name__ == "__main__":
         pairs = parse_airport_file(file_path)
         generate_flights(pairs,route_code,8000,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,parse_tour_config(config_path))
         update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,filter_subfleets=GLOB_FILTER_SUBFLEETS)
+        # cleanup the file without subfleets
+        os.remove(f"DS_Tour_{route_code}_Legs_{time_generated}.csv")
     else:
         print("Schedules mode")
         os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
