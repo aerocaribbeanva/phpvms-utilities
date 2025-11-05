@@ -6,14 +6,15 @@ PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
 CSV_INPUT = 'subfleets-11-4-25.csv'
-JSON_INPUT = 'aircraft_data_20251104_095617.json'
+JSON_INPUT = 'aircraft_data_20251105_122842.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 
 # non simbrief aircraft data - this are aircrafts not available in simbrief and require a custom profile
 # custom_fare_data = {
 #         "ICAO" : {
-#             "profile_url" : "",    
+#             "profile_url" : "",
+#             "airframe_internal_id" : "",    
 #             "icao": "",
 #             "aircraft_name": "",
 #             "base_type": "",
@@ -29,7 +30,8 @@ CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 
 custom_fare_data = {
         "AN26" : {
-            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1741417583325",    
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1741417583325",
+            "airframe_internal_id" : "1098250_1741417583325",    
             "icao": "AN26",
             "aircraft_name": "Antonov AN-26B-100",
             "base_type": "DH8C",
@@ -43,6 +45,7 @@ custom_fare_data = {
         },
         "E190F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749676018149",    
+            "airframe_internal_id" : "1098250_1749676018149", 
             "icao": "E190",
             "aircraft_name": "Embraer E190F",
             "base_type": "E190",
@@ -56,6 +59,7 @@ custom_fare_data = {
         },
         "AT76F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749677098517",    
+            "airframe_internal_id" : "1098250_1749677098517", 
             "icao": "AT76",
             "aircraft_name": "ATR-72-600F",
             "base_type": "AT76",
@@ -69,6 +73,7 @@ custom_fare_data = {
         },
         "A124" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1748055323449",    
+            "airframe_internal_id" : "1098250_1748055323449", 
             "icao": "A124",
             "aircraft_name": "Antonov Ruslan AN124",
             "base_type": "A225",
@@ -82,6 +87,7 @@ custom_fare_data = {
         },
         "AN2" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1748055373206",    
+            "airframe_internal_id" : "1098250_1748055373206", 
             "icao": "AN2",
             "aircraft_name": "Antonov AN-2",
             "base_type": "DHC2",
@@ -95,6 +101,7 @@ custom_fare_data = {
         },
         "MI8" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749677736521",    
+            "airframe_internal_id" : "1098250_1749677736521", 
             "icao": "MI8",
             "aircraft_name": "Mil Mi-17",
             "base_type": "DHC6",
@@ -108,6 +115,7 @@ custom_fare_data = {
         },
         "GA8" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1749679355475",    
+            "airframe_internal_id" : "1098250_1749679355475", 
             "icao": "GA8",
             "aircraft_name": "Gippsland GA-8",
             "base_type": "C208",
@@ -121,6 +129,7 @@ custom_fare_data = {
         },
         "TRIS" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1751717690590",    
+            "airframe_internal_id" : "1098250_1751717690590", 
             "icao": "TRIS",
             "aircraft_name": "BN-2 Trislander",
             "base_type": "C337",
@@ -134,6 +143,7 @@ custom_fare_data = {
         },
         "SH33F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1751718297516",    
+            "airframe_internal_id" : "1098250_1751718297516", 
             "icao": "SH33",
             "aircraft_name": "Short 330 Freigther",
             "base_type": "SH33",
@@ -147,6 +157,7 @@ custom_fare_data = {
         },
         "SH36F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1751718371090",    
+            "airframe_internal_id" : "1098250_1751718371090", 
             "icao": "SH36",
             "aircraft_name": "Short 360 Freighter",
             "base_type": "SH36",
@@ -158,8 +169,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "EC45" : {
+        "EC45" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758886775303",    
+            "airframe_internal_id" : "1098250_1758886775303", 
             "icao": "EC45",
             "aircraft_name": "Airbus H145",
             "base_type": "DA62",
@@ -171,8 +183,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "EC35" : {
+        "EC35" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758886775303",    
+            "airframe_internal_id" : "1098250_1758886775303", 
             "icao": "EC35",
             "aircraft_name": "Airbus H135",
             "base_type": "DA62",
@@ -184,8 +197,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "C402" : {
+        "C402" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758888295942",    
+            "airframe_internal_id" : "1098250_1758888295942", 
             "icao": "C402",
             "aircraft_name": "Cessna 402",
             "base_type": "C404",
@@ -197,8 +211,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "H60" : {
+        "H60" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1758888790325",    
+            "airframe_internal_id" : "1098250_1758888790325", 
             "icao": "H60",
             "aircraft_name": "Sikorsky Helicopter",
             "base_type": "DA42",
@@ -210,8 +225,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "AN26F" : {
+        "AN26F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1762279919058",    
+            "airframe_internal_id" : "1098250_1762279919058", 
             "icao": "AN26",
             "aircraft_name": "Antonov AN-26B-100 Freighter",
             "base_type": "DH8C",
@@ -223,8 +239,9 @@ custom_fare_data = {
             "J": 0,
             "Y": 0
         },
-            "A333F" : {
+        "A333F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1762277064188",    
+            "airframe_internal_id" : "1098250_1762277064188", 
             "icao": "A333",
             "aircraft_name": "A330-300 Freighter",
             "base_type": "A333",
