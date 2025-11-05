@@ -209,7 +209,7 @@ custom_fare_data = {
             "F": 6,
             "J": 0,
             "Y": 0
-        }
+        },
             "AN26F" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1762279919058",    
             "icao": "AN26",
