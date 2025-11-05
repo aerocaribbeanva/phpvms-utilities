@@ -83,7 +83,7 @@ CRN,TJSJ,EC35,,"Airbus H135",1,0,0,50,CGO?capacity=1724;F?capacity=8,1;2;3;4;5;6
 CRN,TJSJ,DHC6,,"de Havilland Canada Twin Otter",1,0,0,50,Y?capacity=16;CGO?capacity=1095,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,C402,,"Cessna 402",1,0,0,50,CGO?capacity=877;F?capacity=8,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,H60,,"Sikorsky Helicopter",1,0,0,50,CGO?capacity=7918;F?capacity=6,1;2;3;4;5;6;7;8;9
-CRN,TJSJ,BBJ2,,"Boeing 737-800 Business Jet",1,0,0,100,,1;2;3;4;5;6;7;8;9
+CRN,MUHA,BBJ2,,"Boeing 737-800 Business Jet",1,0,0,100,,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,B738F,,"Boeing 737-800 Freighter",1,0,0,100,,1;2;3;4;5;6;7;8;9
-CRN,TJSJ,AN26F,,"Antonov AN26 Freighter",1,0,0,100,,1;2;3;4;5;6;7;8;9
+CRN,MUHA,AN26F,,"Antonov AN26 Freighter",1,0,0,100,,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,A333F,,"Airbus A333 Freighter",1,0,0,100,,1;2;3;4;5;6;7;8;9
