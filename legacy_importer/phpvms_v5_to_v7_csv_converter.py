@@ -407,21 +407,21 @@ def main():
         if args.filetype and filename != "":
             filetype = args.filetype
             print(f"Defined argument: {filetype}")
-            match filetype:
-                case "aircrafts":
+            if filetype != "":
+                if filetype == "aircrafts":
                     imported_aircarft_data = import_aircraft(filename)
                     export_aircrafts(imported_aircarft_data,filename)
-                case "schedules":
+                elif filetype == "schedules":
                     imported_schedules_data = import_schedules(filename)
                     # print([imported_schedules_data[0]])
                     # print_data([imported_schedules_data[0]])
                     export_flights(imported_schedules_data,filename)
-                case "add-subfleets-v7":
+                elif filetype == "add-subfleets-v7":
                     update_subfleets(filename)
-                case "validate-subfleet":
+                elif filetype == "validate-subfleet":
                     validate_subfleets(filename)
                     print(f"Completed subfleet validation: {filename}")
-                case _: 
+                else: 
                     print("Unknown filetype")
         else:
             raise Exception("'filetype' not defined")

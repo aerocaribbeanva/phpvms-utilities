@@ -11,16 +11,16 @@ It also includes helpers to **validate subfleets**, **export aircraft**, and **r
 
 ```bash
 # Schedules (v5 → v7)
-python legacy_v5_to_v7.py -f schedules_v5.csv -t schedules
+python phpvms_v5_to_v7_csv_converter.py -f schedules_v5.csv -t schedules
 
 # Aircraft (v5 → v7 subfleet CSV)
-python legacy_v5_to_v7.py -f aircraft_v5.csv -t aircrafts
+python phpvms_v5_to_v7_csv_converter.py -f aircraft_v5.csv -t aircrafts
 
 # Add/refresh subfleets & flight_time on an existing v7 CSV
-python legacy_v5_to_v7.py -f exported-20250101-120000-schedules_v7.csv -t add-subfleets-v7
+python phpvms_v5_to_v7_csv_converter.py -f exported-20250101-120000-schedules_v7.csv -t add-subfleets-v7
 
 # Validate that aircraft types referenced exist in configured airline fleets and ranges
-python legacy_v5_to_v7.py -f aircraft_v5.csv -t validate-subfleet
+python phpvms_v5_to_v7_csv_converter.py -f aircraft_v5.csv -t validate-subfleet
 ```
 
 The script prints the **output file path** when finished (e.g. `exported-YYYYMMDD-HHMMSS-<input>.csv`).
@@ -108,16 +108,16 @@ icao,name,registration,weight,range
 
 ```bash
 # Convert v5 schedules to a v7-ready CSV (with subfleets)
-python legacy_v5_to_v7.py -f schedules_v5.csv -t schedules
+python phpvms_v5_to_v7_csv_converter.py -f schedules_v5.csv -t schedules
 
 # Export aircraft to a v7-style subfleet CSV
-python legacy_v5_to_v7.py -f aircraft_v5.csv -t aircrafts
+python phpvms_v5_to_v7_csv_converter.py -f aircraft_v5.csv -t aircrafts
 
 # Validate that aircraft referenced are in your configured fleet dicts
-python legacy_v5_to_v7.py -f aircraft_v5.csv -t validate-subfleet
+python phpvms_v5_to_v7_csv_converter.py -f aircraft_v5.csv -t validate-subfleet
 
 # Recompute subfleets and flight_time for an existing v7 CSV
-python legacy_v5_to_v7.py -f exported-20250101-120000-schedules_v7.csv -t add-subfleets-v7
+python phpvms_v5_to_v7_csv_converter.py -f exported-20250101-120000-schedules_v7.csv -t add-subfleets-v7
 ```
 
 Resulting files are written next to your script as:
