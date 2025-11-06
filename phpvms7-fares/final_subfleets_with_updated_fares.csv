@@ -12,7 +12,7 @@ CRN,MUHA,A346,,Airbus A346,1,0,0,100,F?capacity=30;Y?capacity=350;J?capacity=60;
 CRN,MUHA,A359,,Airbus A359,1,0,0,100,F?capacity=16;Y?capacity=259;J?capacity=40;CGO?capacity=63753,1;2;3;4;5;6;7;8;9
 CRN,MUHA,A388,,Airbus A388,1,0,0,100,F?capacity=30;Y?capacity=381;J?capacity=60;CGO?capacity=102763,1;2;3;4;5;6;7;8;9
 CRN,MUHA,AN24,,Antonov AN24,1,0,0,100,Y?capacity=44;CGO?capacity=4462,1;2;3;4;5;6;7;8;9
-CRN,MUHA,AN26,,Antonov AN26,1,0,0,100,Y?capacity=30;CGO?capacity=11311,1;2;3;4;5;6;7;8;9
+CRN,MUHA,AN26,,Antonov AN26,1,0,0,100,Y?capacity=30;CGO?capacity=11285,1;2;3;4;5;6;7;8;9
 CRN,MUHA,AT45,,ATR AT45,1,0,0,100,Y?capacity=42;J?capacity=6;CGO?capacity=2623,1;2;3;4;5;6;7;8;9
 CRN,MUHA,AT46,,ATR AT46,1,0,0,100,Y?capacity=42;J?capacity=6;CGO?capacity=2623,1;2;3;4;5;6;7;8;9
 CRN,MUHA,AT75,,ATR AT75,1,0,0,100,Y?capacity=60;J?capacity=8;CGO?capacity=3973,1;2;3;4;5;6;7;8;9
@@ -83,3 +83,7 @@ CRN,TJSJ,EC35,,Airbus H135,1,0,0,50,F?capacity=8;CGO?capacity=1724,1;2;3;4;5;6;7
 CRN,TJSJ,DHC6,,de Havilland Canada Twin Otter,1,0,0,50,Y?capacity=16;CGO?capacity=1095,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,C402,,Cessna 402,1,0,0,50,F?capacity=8;CGO?capacity=877,1;2;3;4;5;6;7;8;9
 CRN,TJSJ,H60,,Sikorsky Helicopter,1,0,0,50,F?capacity=6;CGO?capacity=7918,1;2;3;4;5;6;7;8;9
+CRN,MUHA,BBJ2,BBJ2,Boeing 737-800 Business Jet,1,0,0,100,Y?capacity=53;J?capacity=10;CGO?capacity=25326,1;2;3;4;5;6;7;8;9
+CRN,TJSJ,B738F,349674_1661387182464,Boeing 737-800 Freighter,1,0,0,100,CGO?capacity=44304,1;2;3;4;5;6;7;8;9
+CRN,MUHA,AN26F,1098250_1762279919058,Antonov AN26 Freighter,1,0,0,100,CGO?capacity=16535,1;2;3;4;5;6;7;8;9
+CRN,TJSJ,A333F,1098250_1762277064188,Airbus A333 Freighter,1,0,0,100,CGO?capacity=107501,1;2;3;4;5;6;7;8;9

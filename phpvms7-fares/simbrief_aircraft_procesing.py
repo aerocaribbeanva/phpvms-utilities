@@ -260,6 +260,7 @@ def process_aircraft_data():
     for icao, details in data.items():
         base = details.get("airframes", [])[0] if details.get("airframes") else {}
         aircraft_name = details.get("aircraft_name")
+        airframe_internal_id = base.get('airframe_internal_id','')
         options = base.get("airframe_options", {})
 
         # Extract weight and passenger data
@@ -280,6 +281,8 @@ def process_aircraft_data():
 
         # Base data structure for the aircraft
         aircraft_data = {
+            "profile_url" : f"https://dispatch.simbrief.com/airframes/new/{airframe_internal_id}",
+            "airframe_internal_id": airframe_internal_id,
             "icao": aircraft_icao,
             "aircraft_name": aircraft_name,
             "base_type": basetype,
@@ -314,12 +317,13 @@ def process_aircraft_data():
         if not is_freighter and details.get("airframes") and len(details.get("airframes")) > 1:
             non_base_airframes = details.get("airframes")[1:]
             for nairframe in non_base_airframes:
+                nairframe_airframe_internal_id = nairframe.get("airframe_internal_id","")
                 nairframe_icao = nairframe.get("airframe_icao")
                 nairframe_name = nairframe.get("airframe_name")
                 nairframe_type = nairframe.get("airframe_base_type")
                 noptions = nairframe.get("airframe_options",{})
                 if aircraft_name != nairframe_name:
-                    naircraft_id = f"{nairframe_icao}{nairframe_name.replace(aircraft_name,'')}"
+                    naircraft_id = f"{nairframe_icao}F"
                     if naircraft_id not in processed.keys():
                         # Extract weight and passenger data
                         try:
@@ -339,6 +343,8 @@ def process_aircraft_data():
 
                         # Base data structure for the aircraft
                         naircraft_data = {
+                            "profile_url": f"https://dispatch.simbrief.com/airframes/share/{nairframe_airframe_internal_id}",
+                            "airframe_internal_id": nairframe_airframe_internal_id,
                             "icao": nairframe_icao,
                             "aircraft_name": nairframe_name,
                             "base_type": nairframe_type,
