@@ -1,6 +1,6 @@
 # generate local flighs ignore only upload to git main files
 output*
-exported*
+exported_*
 test*
 v5-exports
 
