@@ -249,7 +249,7 @@ def export_flights(data,file):
                     "airline": airline,
                     "flight_number": flight_number, 
                     "route_code": "",
-                    "callsign": "",
+                    "callsign": flight_number,
                     "route_leg":"",
                     "dpt_airport":dpt_airport,
                     "arr_airport":arr_airport,
