@@ -399,8 +399,8 @@ def parse_tour_config(config_path):
         config['pilot_pay'] = first_row.get('pilot_pay', '').strip()
         config['notes'] = f"<p>{first_row.get('notes', '').strip()}</p>"
         config['start_flight_number'] = first_row.get('start_flight_number', '8000').strip()
-        config['start_date'] = f"{first_row.get('start_date').strip()} 00:00:00"
-        config['end_date'] = f"{first_row.get('end_date').strip()} 00:00:00"
+        config['start_date'] = "" # f"{first_row.get('start_date').strip()} 00:00:00"
+        config['end_date'] = "" # f"{first_row.get('end_date').strip()} 00:00:00"
         filter_subfleets = first_row.get('subfleets', '').strip().upper()
         if filter_subfleets != '':
             config['subfleets'] = filter_subfleets.split(';')
