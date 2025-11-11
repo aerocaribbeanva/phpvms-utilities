@@ -1,6 +1,6 @@
 # generate local flighs ignore only upload to git main files
 output*
-exported*
+exported_*
 test*
 v5-exports
 
@@ -176,4 +176,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# ignore csv files
+# ignore macos files
+*.DS_Store*
