@@ -1,0 +1,20 @@
+MUHA-HAV,TJBQ-BQN # Jose Marti International Airport, Havana, Cuba TO Rafael Hernandez Airport, Aguadilla, Puerto Rico
+TJBQ-BQN,TTPP-POS # Rafael Hernandez Airport, Aguadilla, Puerto Rico TO Piarco International Airport, Port of Spain, Trinidad and Tobago
+TTPP-POS,TNCM-SXM # Piarco International Airport, Port of Spain, Trinidad and Tobago TO Princess Juliana International Airport, Philipsburg, Sint Maarten
+TNCM-SXM,TBPB-BGI # Princess Juliana International Airport, Philipsburg, Sint Maarten TO Grantley Adams International Airport, Bridgetown, Barbados
+TBPB-BGI,SVMI-CCS # Grantley Adams International Airport, Bridgetown, Barbados TO Simon Bolivar International Airport, Maiquetia, Venezuela
+SVMI-CCS,SKBO-BOG # Simon Bolivar International Airport, Maiquetia, Venezuela TO El Dorado International Airport, Bogota, Colombia
+SKBO-BOG,MPTO-PTY # El Dorado International Airport, Bogota, Colombia TO Tocumen International Airport, Panama City, Panama
+MPTO-PTY,MMMX-MEX # Tocumen International Airport, Panama City, Panama TO Mexico City International Airport, Mexico City, Mexico
+MMMX-MEX,KPHX-PHX # Mexico City International Airport, Mexico City, Mexico TO Phoenix Sky Harbor International Airport, Phoenix, United States
+KPHX-PHX,KMSY-MSY # Phoenix Sky Harbor International Airport, Phoenix, United States TO Louis Armstrong New Orleans International Airport, New Orleans, United States
+KMSY-MSY,KMIA-MIA # Louis Armstrong New Orleans International Airport, New Orleans, United States TO Miami International Airport, Miami, United States
+KMIA-MIA,MYEF-GGT # Miami International Airport, Miami, United States TO Exuma International Airport, George Town, Bahamas
+MYEF-GGT,TJSJ-SJU # Exuma International Airport, George Town, Bahamas TO Luis Munoz Marin International Airport, San Juan, Puerto Rico
+TJSJ-SJU,MDSD-SDQ # Luis Munoz Marin International Airport, San Juan, Puerto Rico TO Las Americas International Airport, Santo Domingo, Dominican Republic
+MDSD-SDQ,MUCL-CYO # Las Americas International Airport, Santo Domingo, Dominican Republic TO Vilo Acuna Airport, Cayo Largo del Sur, Cuba
+MUCL-CYO,MKJP-KIN # Vilo Acuna Airport, Cayo Largo del Sur, Cuba TO Norman Manley International Airport, Kingston, Jamaica
+MKJP-KIN,MUVR-VRA # Norman Manley International Airport, Kingston, Jamaica TO Juan Gualberto Gomez International Airport, Varadero, Cuba
+MUVR-VRA,TJPS-PSE # Juan Gualberto Gomez International Airport, Varadero, Cuba TO Mercedita Airport, Ponce, Puerto Rico
+TJPS-PSE,MDPC-PUJ # Mercedita Airport, Ponce, Puerto Rico TO Punta Cana International Airport, Punta Cana, Dominican Republic
+MDPC-PUJ,MUHA-HAV # Punta Cana International Airport, Punta Cana, Dominican Republic TO Jose Marti International Airport, Havana, Cuba
