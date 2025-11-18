@@ -185,8 +185,13 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
 
             dpt, arr, flt = calculate_flight_times(distance)
 
+            call_sign = ""
+
+            if(flight_type == 'F'):
+                call_sign = "CRF"
+
             records.append([
-                "CRN", current_number, route_code.upper(), "", leg_number, a1_icao, a2_icao, "", "1234567",
+                "CRN", current_number, route_code.upper(), call_sign, leg_number, a1_icao, a2_icao, "", "1234567",
                 dpt, arr, "", distance, flt, flight_type, "", "", pilot_pay,
                 "", notes, start_date, end_date, "0", "", "", "", "", ""
             ])
@@ -202,10 +207,12 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
             distance = fetch_distance(a1_iata, a2_iata)
             requests_made += 1
 
+            pax_callsign = ""
+
             # Generate Passenger Outbound
             dpt, arr, flt = calculate_flight_times(distance)
             records.append([
-                "CRN", current_number, route_code, current_number, "", a1_icao, a2_icao, "", "1234567",
+                "CRN", current_number, route_code, pax_callsign, "", a1_icao, a2_icao, "", "1234567",
                 dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
             ])
             current_number += 1
@@ -213,15 +220,18 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
             # Passenger Return
             dpt, arr, flt = calculate_flight_times(distance)
             records.append([
-                "CRN", current_number, route_code, current_number, "", a2_icao, a1_icao, "", "1234567",
+                "CRN", current_number, route_code, pax_callsign, "", a2_icao, a1_icao, "", "1234567",
                 dpt, arr, "", distance, flt, "J", "", "", "", "", "", "", "", "1", "", "", "", "", ""
             ])
             current_number += 1
 
+
+            cargo_callsign = "CRF"
+
             # Cargo Outbound
             dpt, arr, flt = calculate_flight_times(distance)
             records.append([
-                "CRN", current_number, route_code, current_number, "", a1_icao, a2_icao, "", "1234567",
+                "CRN", current_number, route_code, cargo_callsign, "", a1_icao, a2_icao, "", "1234567",
                 dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
             ])
             current_number += 1
@@ -229,7 +239,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
             # Cargo Return
             dpt, arr, flt = calculate_flight_times(distance)
             records.append([
-                "CRN", current_number, route_code, current_number, "", a2_icao, a1_icao, "", "1234567",
+                "CRN", current_number, route_code, cargo_callsign, "", a2_icao, a1_icao, "", "1234567",
                 dpt, arr, "", distance, flt, "F", "", "", "", "", "", "", "", "1", "", "", "", "", ""
             ])
             current_number += 1
