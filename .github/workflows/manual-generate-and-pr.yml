@@ -51,8 +51,11 @@ jobs:
         run: |
           set -euo pipefail
           ts="$(date -u +'%Y%m%d-%H%M%S')"
-          suffix="${{ github.event.inputs.branch_suffix }}"
-          suffix="${suffix// /-}"
+          raw="${{ github.event.inputs.branch_suffix }}"
+          # Keep alnum, dash, underscore; collapse others to '-'
+          suffix="$(echo "$raw" | tr -cs 'A-Za-z0-9._-' '-' )"
+          # Trim leading/trailing dashes
+          suffix="${suffix##-}"; suffix="${suffix%%-}"
           if [ -n "$suffix" ]; then
             BRANCH="chore/auto-gen-${ts}-${suffix}"
           else
@@ -61,6 +64,7 @@ jobs:
           git checkout -b "$BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "Using branch: $BRANCH"
+
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -141,12 +145,21 @@ jobs:
 
       - name: Commit changes
         if: steps.diff.outputs.changed == 'true'
+        env:
+          MODE: ${{ github.event.inputs.mode || 'all' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Automated generation (${ { github.event.inputs.mode || 'all' } })"
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Automated generation (${MODE})"
           git push --set-upstream origin "${{ steps.mkbranch.outputs.branch }}"
+
 
       - name: Open Pull Request to main
         if: steps.diff.outputs.changed == 'true'
