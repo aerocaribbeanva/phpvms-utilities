@@ -1,0 +1,130 @@
+name: Generate Non-Tour Flights on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'flights-generator/*_*/airports.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run_and_commit:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    environment: flight-gen
+
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Detect changed non-tour routes and generate schedules
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Base repo:  ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "Base ref:   ${{ github.event.pull_request.base.ref }}"
+          echo "Base SHA:   ${{ github.event.pull_request.base.sha }}"
+          echo "Head repo:  ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Head ref:   ${{ github.event.pull_request.head.ref }}"
+          echo "Head SHA:   ${{ github.event.pull_request.head.sha }}"
+
+          # Add remote for the BASE repo and fetch the exact BASE commit (works for forks)
+          git remote add base "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.base.repo.full_name }}" || true
+          git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.sha }}:refs/remotes/base/pr_base || {
+            echo "Exact base SHA fetch failed; fetching base ref instead..."
+            git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.ref }}:refs/remotes/base/pr_base
+          }
+
+          echo "Base tip:"
+          git log --oneline -1 base/pr_base || true
+          echo "PR head tip:"
+          git log --oneline -1 HEAD || true
+
+          # Prefer three-dot diff; fall back to two-dot if histories are unrelated
+          if git merge-base --is-ancestor base/pr_base HEAD 2>/dev/null || git merge-base base/pr_base HEAD >/dev/null 2>&1; then
+            echo "Using three-dot diff (base/pr_base...HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base...HEAD || true)"
+          else
+            echo "No merge base; using two-dot diff (base/pr_base..HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base..HEAD || true)"
+          fi
+
+          printf '%s\n' "$CHANGED" | sed 's/^/changed: /'
+
+          # Collect ICAO/IATA pairs that match: flights-generator/ICAO_IATA/airports.txt
+          declare -A pairs=()
+          while IFS= read -r f; do
+            [[ -z "${f:-}" ]] && continue
+            if [[ "$f" =~ ^flights-generator/([A-Za-z0-9]{4})_([A-Za-z0-9]{3})/airports\.txt$ ]]; then
+              ICAO="${BASH_REMATCH[1]}"
+              IATA="${BASH_REMATCH[2]}"
+              # verify file exists at HEAD
+              if [[ -f "flights-generator/${ICAO}_${IATA}/airports.txt" ]]; then
+                pairs["${ICAO}_${IATA}"]="${ICAO},${IATA}"
+              fi
+            fi
+          done <<< "$CHANGED"
+
+          if [ ${#pairs[@]} -eq 0 ]; then
+            echo "No non-tour route changes detected."
+            exit 0
+          fi
+
+          echo "Non-tour routes detected:"
+          for k in "${!pairs[@]}"; do echo " - ${pairs[$k]}"; done
+
+          pushd flights-generator >/dev/null
+          for k in "${!pairs[@]}"; do
+            IFS=',' read -r ICAO IATA <<< "${pairs[$k]}"
+            if [[ -f "${ICAO}_${IATA}/airports.txt" ]]; then
+              echo "Generating schedules for ${ICAO}_${IATA}..."
+              # Non-tour invocation (Schedules mode)
+              python generate_flights.py "${ICAO}" "${IATA}" --yes
+            else
+              echo "Skipping ${ICAO}_${IATA} (missing airports.txt)"
+            fi
+          done
+          popd >/dev/null
+
+      - name: Show git status (debug)
+        run: |
+          git status
+          echo "---- DIFF (unstaged) ----"
+          git diff -- . || true
+
+      - name: Commit and push changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Automated non-tour schedules from workflow"
+          git push

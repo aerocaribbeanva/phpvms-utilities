@@ -5,7 +5,7 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-11-4-25.csv'
+CSV_INPUT = 'subfleets-11-17-25.csv'
 JSON_INPUT = 'aircraft_data_20251105_122842.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
@@ -248,6 +248,20 @@ custom_fare_data = {
             "default_pax": 3,
             "mzfw_lbs": 374785.0,
             "oei_lbs": 266759.0,
+            "is_freighter": True,
+            "F": 0,
+            "J": 0,
+            "Y": 0
+        },
+        "IL18F" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1763433069645",
+            "airframe_internal_id" : "1098250_1763433069645", 
+            "icao": "IL18",
+            "aircraft_name": "IL18 Freighter",
+            "base_type": "JS41",
+            "default_pax": 0,
+            "mzfw_lbs": 107586.0,
+            "oei_lbs": 72000.0,
             "is_freighter": True,
             "F": 0,
             "J": 0,

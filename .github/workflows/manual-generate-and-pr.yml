@@ -1,0 +1,176 @@
+name: Manual Generate & Open PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to generate"
+        type: choice
+        required: false
+        default: all
+        options: [all, tours, non_tours]
+      branch_suffix:
+        description: "Optional suffix for the new branch name"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    environment: flight-gen
+    concurrency:
+      group: manual-generate-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout main (base repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure up-to-date main
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git status -sb
+          git log --oneline -1
+
+      - name: Create working branch
+        id: mkbranch
+        shell: bash
+        run: |
+          set -euo pipefail
+          ts="$(date -u +'%Y%m%d-%H%M%S')"
+          suffix="${{ github.event.inputs.branch_suffix }}"
+          suffix="${suffix// /-}"
+          if [ -n "$suffix" ]; then
+            BRANCH="chore/auto-gen-${ts}-${suffix}"
+          else
+            BRANCH="chore/auto-gen-${ts}"
+          fi
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Using branch: $BRANCH"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Generate flights (manual)
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          MODE: ${{ github.event.inputs.mode || 'all' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "MODE=$MODE"
+
+          gen_non_tours() {
+            echo "==> Scanning non-tour routes (flights-generator/ICAO_IATA/airports.txt)"
+            shopt -s nullglob
+            found=0
+            for d in flights-generator/*_*; do
+              [ -d "$d" ] || continue
+              base="$(basename "$d")"
+              if [[ "$base" =~ ^([A-Za-z0-9]{4})_([A-Za-z0-9]{3})$ ]] && [[ -f "$d/airports.txt" ]]; then
+                ICAO="${BASH_REMATCH[1]}"; IATA="${BASH_REMATCH[2]}"
+                echo "Generating schedules for ${ICAO}_${IATA}..."
+                ( cd flights-generator && python generate_flights.py "${ICAO}" "${IATA}" --yes )
+                found=1
+              fi
+            done
+            if [ "$found" -eq 0 ]; then
+              echo "No non-tour routes found."
+            fi
+          }
+
+          gen_tours() {
+            echo "==> Scanning tours (flights-generator/TOURS/XXXX/{legs.txt,config.csv})"
+            shopt -s nullglob
+            found=0
+            for d in flights-generator/TOURS/*; do
+              [ -d "$d" ] || continue
+              code="$(basename "$d")"
+              if [[ "$code" =~ ^[A-Za-z0-9]{4}$ ]] && [[ -f "$d/legs.txt" && -f "$d/config.csv" ]]; then
+                echo "Generating tour for $code..."
+                ( cd flights-generator && python generate_flights.py TOUR "$code" --yes )
+                found=1
+              fi
+            done
+            if [ "$found" -eq 0 ]; then
+              echo "No tours found."
+            fi
+          }
+
+          case "$MODE" in
+            all)        gen_non_tours; gen_tours ;;
+            non_tours)  gen_non_tours ;;
+            tours)      gen_tours ;;
+            *) echo "Unknown MODE: $MODE"; exit 1 ;;
+          esac
+
+      - name: Detect changes
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected:"
+            git status --porcelain
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit"
+          fi
+
+      - name: Commit changes
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Automated generation (${ { github.event.inputs.mode || 'all' } })"
+          git push --set-upstream origin "${{ steps.mkbranch.outputs.branch }}"
+
+      - name: Open Pull Request to main
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: ${{ steps.mkbranch.outputs.branch }}
+          title: "Automated flight generation (${{ github.event.inputs.mode || 'all' }})"
+          body: |
+            This PR was created automatically by the **Manual Generate & Open PR** workflow.
+
+            - Mode: `${{ github.event.inputs.mode || 'all' }}`
+            - Source branch: `${{ steps.mkbranch.outputs.branch }}`
+            - Base: `main`
+
+            It includes generated outputs from:
+            - Non-tour routes under `flights-generator/ICAO_IATA/airports.txt`
+            - Tours under `flights-generator/TOURS/XXXX/{legs.txt,config.csv}`
+          labels: |
+            automated
+            flight-generation
+          draft: false
+
+      - name: No-op summary
+        if: steps.diff.outputs.changed != 'true'
+        run: echo "No changes produced by generation; PR not created."
