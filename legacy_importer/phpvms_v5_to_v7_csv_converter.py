@@ -324,6 +324,15 @@ def update_subfleets(CSV_INPUT):
             print(f"indx: {idx} | Flight: {flight_number} marked for deletion")
             continue
 
+        flight_type=row["flight_type"]
+        callsign=row["callsign"]
+        # check if callsign needs to be updated
+        if flight_type == 'F':
+            if callsign != 'CRF':
+                row['callsign'] = 'CRF'
+        elif flight_type == 'J':
+            if callsign != '':
+                row['callsign'] = ''
         flight_distance = int(row['distance'])
         dpt_time = row["dpt_time"]
         arr_time = row["arr_time"]
