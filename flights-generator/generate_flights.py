@@ -45,7 +45,7 @@ def calculate_flight_times(distance_nm):
     dpt_hour = random.randint(5, 22)
     dpt_minute = random.choice([0, 15, 30, 45])
     dpt_time = datetime.strptime(f"{dpt_hour:02}:{dpt_minute:02}", TIME_FMT)
-    avg_speed_knots = 300
+    avg_speed_knots = 250
     flight_time_min = (distance_nm / avg_speed_knots) * 60
     arr_time = dpt_time + timedelta(minutes=flight_time_min)
     return (dpt_time.strftime(TIME_FMT), arr_time.strftime(TIME_FMT), str(int(flight_time_min)))
