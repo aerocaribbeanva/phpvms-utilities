@@ -1,1 +1,29 @@
 
+FBAB-,FBCO- #Abu to Camp Okavango
+FBCO-,FBDT- #Camp Okavango to Delta Camp
+FBDT-,FBGU- #Delta Camp to Guma
+FBGU-,FBHU- #Guma to Hunda
+FBHU-,FBJA- #Hunda to Jao
+FBJA-,FBKI- #Jao to Kiri
+FBKI-,FBKK- #Kiri to Kananna
+FBKK-,FBKR- #Kananna to Khwai
+FBKR-,FBMB- #Khwai to Santawani
+FBMB-,FBMD- #Santawani to Ntswi
+FBMD-,FBME- #Ntswi to Chitabe
+FBME-,FBMF- #Chitabe to Xakanaxa
+FBMF-,FBMJ- #Xakanaxa to Shindi
+FBMJ-,FBMQ- #Shindi to Xaranna
+FBMQ-,FBMR- #Xaranna to Sanctuary
+FBMR-,FBNA- #Sanctuary to Chiefs Island
+FBNA-,FBNB- #Chiefs Island to Nxabega
+FBNB-,FBND- #Nxabega to Mapula
+FBND-,FBNG- #Mapula to Mombo
+FBNG-,FBNH- #Mombo to Xamaxai
+FBNH-,FBNO- #Xamaxai to Pom Pom
+FBNO-,FBOM- #Pom Pom to Omdop
+FBOM-,FBSH- #Omdop to Seronga
+FBSH-,FBSW- #Seronga to Shakawe
+FBSW-,FBYM- #Shakawe to Yumbura
+FBYM-,FBXB- #Yumbura to Xaxaba
+FBXB-,FBXG- #Xaxaba to Xugana
+FBXG-,FBXI- #Xugana to Xigera
