@@ -8,8 +8,7 @@ FBKI-,FBKK- #Kiri to Kananna
 FBKK-,FBKR- #Kananna to Khwai
 FBKR-,FBMB- #Khwai to Santawani
 FBMB-,FBNB- #Santawani to Nxabega
-FBNB-,FBNG- #Nxabega to Mombo
-FBNG-,FBNH- #Mombo to Xamaxai
+FBNB-,FBNH- #Nxabega to Xamaxai
 FBNH-,FBNO- #Xamaxai to Pom Pom
 FBNO-,FBOM- #Pom Pom to Omdop
 FBOM-,FBSH- #Omdop to Seronga
