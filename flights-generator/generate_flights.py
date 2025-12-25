@@ -8,12 +8,14 @@ import argparse
 from datetime import datetime, timedelta
 import requests
 import sys
+from geopy.distance import geodesic
 
 # Constants
 GLOB_FILTER_SUBFLEETS=[]
 CACHE_FILE = "distance_cache.json"
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
+AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
 TOKEN = os.getenv("AIRPORT_GAP_TOKEN")
 HEADERS = {"Authorization": f"Bearer token={TOKEN}"}
 TIME_FMT = '%H:%M'
@@ -66,57 +68,149 @@ def _save_cache(cache: dict, path=CACHE_FILE):
         json.dump(cache, f, ensure_ascii=False, indent=2, sort_keys=True)
     os.replace(tmp, path)
 
-def _key_for_route(from_iata: str, to_iata: str) -> str:
+def _key_for_route(from_code: str, to_code: str) -> str:
     """Symmetric cache key so A-B and B-A hit the same entry."""
-    a, b = from_iata.strip().upper(), to_iata.strip().upper()
+    a, b = from_code.strip().upper(), to_code.strip().upper()
     return f"{min(a,b)}-{max(a,b)}"
 
-def fetch_distance(from_iata, to_iata, cache_path: str = CACHE_FILE):
+def get_airport_coordinates(icao_code):
     """
-    Fetch great-circle distance in nautical miles between two IATA codes.
-    Uses a JSON file cache to avoid repeated API calls.
+    Retrieve airport coordinates using ICAO code from API.
+    
+    Args:
+        icao_code (str): 4-letter ICAO airport code (e.g., 'EGLL' for London Heathrow)
+    
+    Returns:
+        tuple: (latitude, longitude) or None if not found
+    """
+    url = f"{AIRPORT_DATA_API_URL}?icao={icao_code}"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data and 'latitude' in data and 'longitude' in data:
+            return (float(data['latitude']), float(data['longitude']))
+        else:
+            print(f"Airport {icao_code} not found in Airport-Data API")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching coordinates for {icao_code}: {e}")
+        return None
+
+
+def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE):
+    """
+    Calculate the great circle distance between two airports using ICAO codes.
+    Uses geopy and Airport-Data API for coordinates.
+    
+    Args:
+        icao1 (str): ICAO code of the first airport
+        icao2 (str): ICAO code of the second airport
+        cache_path (str): Path to cache file
+    
+    Returns:
+        int: Distance in nautical miles, or None if error
     """
     cache = _load_cache(cache_path)
-    key = _key_for_route(from_iata, to_iata)
+    key = _key_for_route(icao1, icao2)
 
-    # 1) Cache hit
+    # Check cache first
     if key in cache:
         return int(cache[key])
     
-    # 2) Cache miss → call API with basic rate-limit handling
-    payload = {"from": from_iata, "to": to_iata}
-    print("Cache miss → call API with basic rate-limit handling")
-    print(f"Retrieve distance {payload}")
-    backoff = 30  # seconds
-    max_wait = 5 * 60  # cap total wait per call (optional)
+    print(f"🌍 Calculating distance using ICAO codes: {icao1} → {icao2}")
+    
+    # Get coordinates for both airports
+    coords1 = get_airport_coordinates(icao1)
+    coords2 = get_airport_coordinates(icao2)
+    
+    if coords1 is None or coords2 is None:
+        print(f"❌ Could not retrieve coordinates for {icao1} or {icao2}")
+        return None
+    
+    # Calculate distance using geodesic (great circle)
+    distance = geodesic(coords1, coords2)
+    nm = int(distance.nautical)
+    
+    # Cache the result
+    cache[key] = nm
+    _save_cache(cache, cache_path)
+    
+    print(f"✅ Distance calculated: {nm} nautical miles")
+    return nm
 
-    waited = 0
-    while True:
-        response = requests.post(API_URL, data=payload, headers=HEADERS)
-        if response.status_code == 200:
-            data = response.json()
-            nm = int(data["data"]["attributes"]["nautical_miles"])
-            cache[key] = nm
-            _save_cache(cache, cache_path)
-            return nm
 
-        if response.status_code == 429:
-            # Rate limited → wait and retry with exponential backoff (capped)
-            sleep_s = min(backoff, max_wait - waited) if max_wait else backoff
-            if sleep_s <= 0:
-                raise TimeoutError("Rate limit persisted too long; aborting.")
-            print(f"Rate limit hit. Waiting {sleep_s} seconds...")
-            time.sleep(sleep_s)
-            waited += sleep_s
-            backoff = min(backoff * 2, 120)  # grow to a max of 2 min
-            continue
+def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path: str = CACHE_FILE):
+    """
+    Fetch great-circle distance in nautical miles between two airports.
+    Tries IATA-based API first, falls back to ICAO-based calculation if needed.
+    Uses a JSON file cache to avoid repeated API calls.
+    
+    Args:
+        from_iata (str): IATA code of origin airport
+        to_iata (str): IATA code of destination airport
+        from_icao (str): ICAO code of origin airport (fallback)
+        to_icao (str): ICAO code of destination airport (fallback)
+        cache_path (str): Path to cache file
+    
+    Returns:
+        int: Distance in nautical miles
+    """
+    cache = _load_cache(cache_path)
+    
+    # Try IATA first (if both codes are available and not empty)
+    if from_iata and to_iata and from_iata.strip() and to_iata.strip():
+        key = _key_for_route(from_iata, to_iata)
 
-        # Other non-200 responses → raise with details
-        try:
-            err_txt = response.text
-        except Exception:
-            err_txt = "<no body>"
-        raise Exception(f"Failed to fetch distance ({response.status_code}): {err_txt}")
+        # 1) Cache hit
+        if key in cache:
+            return int(cache[key])
+        
+        # 2) Cache miss → call API with basic rate-limit handling
+        payload = {"from": from_iata, "to": to_iata}
+        print(f"📡 API call for IATA distance: {from_iata} → {to_iata}")
+        backoff = 30  # seconds
+        max_wait = 5 * 60  # cap total wait per call (optional)
+
+        waited = 0
+        while True:
+            response = requests.post(API_URL, data=payload, headers=HEADERS)
+            if response.status_code == 200:
+                data = response.json()
+                nm = int(data["data"]["attributes"]["nautical_miles"])
+                cache[key] = nm
+                _save_cache(cache, cache_path)
+                print(f"✅ IATA distance retrieved: {nm} nautical miles")
+                return nm
+
+            if response.status_code == 429:
+                # Rate limited → wait and retry with exponential backoff (capped)
+                sleep_s = min(backoff, max_wait - waited) if max_wait else backoff
+                if sleep_s <= 0:
+                    print("⚠️ Rate limit persisted, falling back to ICAO calculation")
+                    break
+                print(f"⏳ Rate limit hit. Waiting {sleep_s} seconds...")
+                time.sleep(sleep_s)
+                waited += sleep_s
+                backoff = min(backoff * 2, 120)  # grow to a max of 2 min
+                continue
+
+            # Other non-200 responses → try ICAO fallback
+            print(f"⚠️ IATA API failed ({response.status_code}), trying ICAO fallback")
+            break
+    else:
+        print(f"⚠️ Missing IATA codes (from: '{from_iata}', to: '{to_iata}'), using ICAO fallback")
+    
+    # Fallback to ICAO-based calculation
+    if from_icao and to_icao and from_icao.strip() and to_icao.strip():
+        distance = calculate_distance_by_icao(from_icao, to_icao, cache_path)
+        if distance is not None:
+            return distance
+    
+    # If we get here, both methods failed
+    raise Exception(f"Failed to fetch distance between {from_iata or from_icao} and {to_iata or to_icao}")
 
 def parse_airport_file(file_path):
     with open(file_path, 'r') as file:
@@ -180,7 +274,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
                 print("Reached 100 API requests, sleeping for 60 seconds...")
                 time.sleep(60)
                 requests_made = 0
-            distance = fetch_distance(a1_iata, a2_iata)
+            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao)
             requests_made += 1
 
             dpt, arr, flt = calculate_flight_times(distance)
@@ -204,7 +298,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
                 print("Reached 100 API requests, sleeping for 60 seconds...")
                 time.sleep(60)
                 requests_made = 0
-            distance = fetch_distance(a1_iata, a2_iata)
+            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao)
             requests_made += 1
 
             pax_callsign = ""
