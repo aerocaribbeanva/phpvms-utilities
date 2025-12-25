@@ -17,7 +17,9 @@ AIRPORTS_JSON_FILE = "airports.json"  # Local backup database
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
 AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
+AIRPORTDB_IO_API_URL = "https://airportdb.io/api/v1/airport"
 TOKEN = os.getenv("AIRPORT_GAP_TOKEN")
+AIRPORTDB_TOKEN = os.getenv("AIRPORT_DB_TOKEN")
 HEADERS = {"Authorization": f"Bearer token={TOKEN}"}
 TIME_FMT = '%H:%M'
 MAX_REQUESTS_PER_MIN = 100
@@ -153,10 +155,66 @@ def get_airport_from_local_db(icao_code, airports_db):
     
     return None
 
+def get_airport_from_airportdb_io(icao_code):
+    """
+    Get airport coordinates from AirportDB.io API.
+    
+    Args:
+        icao_code (str): 4-letter ICAO code
+    
+    Returns:
+        tuple: (latitude, longitude) or None if not found
+    """
+    if not AIRPORTDB_TOKEN:
+        return None
+    
+    icao_upper = icao_code.strip().upper()
+    url = f"{AIRPORTDB_IO_API_URL}/{icao_upper}?apiToken={AIRPORTDB_TOKEN}"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        
+        # Check for successful response
+        if response.status_code == 200:
+            data = response.json()
+            
+            lat = data.get('latitude_deg')
+            lon = data.get('longitude_deg')
+            
+            if lat is not None and lon is not None:
+                print(f"📍 Found {icao_code} via AirportDB.io API")
+                return (float(lat), float(lon))
+            else:
+                print(f"⚠️ Airport {icao_code} found in AirportDB.io but missing coordinates")
+                return None
+        elif response.status_code == 404:
+            print(f"⚠️ Airport {icao_code} not found in AirportDB.io")
+            return None
+        elif response.status_code == 401:
+            print(f"⚠️ AirportDB.io API authentication failed (check AIRPORT_DB_TOKEN)")
+            return None
+        else:
+            print(f"⚠️ AirportDB.io API error ({response.status_code})")
+            return None
+            
+    except ValueError as e:
+        print(f"❌ Error parsing AirportDB.io response for {icao_code}: {e}")
+        return None
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout fetching from AirportDB.io for {icao_code}")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error with AirportDB.io for {icao_code}: {e}")
+        return None
+
 def get_airport_coordinates(icao_code, airports_db=None):
     """
     Retrieve airport coordinates using ICAO code.
-    Tries local database first, then falls back to API.
+    Uses 4-tier fallback system:
+    1. Local database (airports.json)
+    2. AirportDB.io API
+    3. Airport-Data API
+    4. Fail
     
     Args:
         icao_code (str): 4-letter ICAO airport code (e.g., 'EGLL' for London Heathrow)
@@ -165,14 +223,20 @@ def get_airport_coordinates(icao_code, airports_db=None):
     Returns:
         tuple: (latitude, longitude) or None if not found
     """
-    # Try local database first
+    # Tier 1: Try local database first
     if airports_db is not None:
         coords = get_airport_from_local_db(icao_code, airports_db)
         if coords is not None:
             print(f"📍 Found {icao_code} in local database")
             return coords
     
-    # Fall back to API
+    # Tier 2: Try AirportDB.io API (if token available)
+    if AIRPORTDB_TOKEN:
+        coords = get_airport_from_airportdb_io(icao_code)
+        if coords is not None:
+            return coords
+    
+    # Tier 3: Fall back to Airport-Data API
     url = f"{AIRPORT_DATA_API_URL}?icao={icao_code}"
     
     try:
@@ -182,8 +246,6 @@ def get_airport_coordinates(icao_code, airports_db=None):
         # Check if response has content
         if not response.text or response.text.strip() == '':
             print(f"⚠️ Airport {icao_code} not found in Airport-Data API (empty response)")
-            print(f"   This airport may not exist in the database.")
-            print(f"   Please verify the ICAO code is correct or add airports.json file.")
             return None
         
         data = response.json()
@@ -193,18 +255,16 @@ def get_airport_coordinates(icao_code, airports_db=None):
             lon = data['longitude']
             # Validate coordinates are valid numbers
             if lat and lon:
-                print(f"📍 Found {icao_code} via API")
+                print(f"📍 Found {icao_code} via Airport-Data API")
                 return (float(lat), float(lon))
             else:
                 print(f"⚠️ Airport {icao_code} found but has invalid coordinates")
                 return None
         else:
             print(f"⚠️ Airport {icao_code} not found in Airport-Data API")
-            print(f"   Response: {response.text[:200]}")
             return None
     except ValueError as e:
         print(f"❌ Error parsing JSON for {icao_code}: {e}")
-        print(f"   Response: {response.text[:200]}")
         return None
     except requests.exceptions.Timeout:
         print(f"⏱️ Timeout fetching coordinates for {icao_code}")
@@ -212,6 +272,10 @@ def get_airport_coordinates(icao_code, airports_db=None):
     except requests.exceptions.RequestException as e:
         print(f"❌ Network error fetching coordinates for {icao_code}: {e}")
         return None
+    
+    # Tier 4: All methods failed
+    print(f"❌ Could not find airport {icao_code} in any database")
+    return None
 
 
 def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE, airports_db=None):
@@ -337,6 +401,9 @@ def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path:
     if airports_db is None:
         error_msg += f"\n💡 NOTE: Local airports database failed to load or download.\n"
         error_msg += f"   Check your internet connection and try again.\n"
+    if not AIRPORTDB_TOKEN:
+        error_msg += f"\n💡 TIP: Set AIRPORT_DB_TOKEN environment variable for better coverage.\n"
+        error_msg += f"   Get a free API key at https://airportdb.io\n"
     error_msg += f"\nPlease verify the airport codes in your airports.txt or legs.txt file."
     raise Exception(error_msg)
 
