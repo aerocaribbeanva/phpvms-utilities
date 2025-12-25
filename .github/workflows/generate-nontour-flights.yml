@@ -40,6 +40,7 @@ jobs:
       - name: Detect changed non-tour routes and generate schedules
         env:
           AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
