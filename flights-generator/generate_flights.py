@@ -13,6 +13,7 @@ from geopy.distance import geodesic
 # Constants
 GLOB_FILTER_SUBFLEETS=[]
 CACHE_FILE = "distance_cache.json"
+AIRPORTS_JSON_FILE = "airports.json"  # Local backup database
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
 AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
@@ -72,42 +73,157 @@ def _key_for_route(from_code: str, to_code: str) -> str:
     a, b = from_code.strip().upper(), to_code.strip().upper()
     return f"{min(a,b)}-{max(a,b)}"
 
-def get_airport_coordinates(icao_code):
+def load_local_airports_db(json_file=AIRPORTS_JSON_FILE):
     """
-    Retrieve airport coordinates using ICAO code from API.
+    Load the local airports.json database.
+    If the file doesn't exist, automatically download it from GitHub.
+    Returns a dictionary with ICAO codes as keys.
+    
+    Expected JSON structure (from mwgg/Airports):
+    {
+      "KJFK": {
+        "icao": "KJFK",
+        "iata": "JFK",
+        "name": "John F Kennedy International Airport",
+        "city": "New York",
+        "state": "New York",
+        "country": "US",
+        "elevation": 13,
+        "lat": 40.63980103,
+        "lon": -73.77890015,
+        "tz": "America/New_York"
+      },
+      ...
+    }
+    """
+    # If file doesn't exist, try to download it
+    if not os.path.exists(json_file):
+        print(f"📥 airports.json not found. Attempting to download from GitHub...")
+        download_url = "https://raw.githubusercontent.com/mwgg/Airports/master/airports.json"
+        
+        try:
+            response = requests.get(download_url, timeout=30)
+            response.raise_for_status()
+            
+            # Save to file
+            with open(json_file, 'w', encoding='utf-8') as f:
+                f.write(response.text)
+            
+            print(f"✅ Successfully downloaded airports.json ({len(response.text) / 1024 / 1024:.2f} MB)")
+            
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ Could not download airports.json: {e}")
+            print(f"   Continuing without local airport database...")
+            print(f"   You can manually download from: {download_url}")
+            return None
+    
+    # Load the file
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
+            airports = json.load(f)
+            print(f"✅ Loaded {len(airports)} airports from local database: {json_file}")
+            return airports
+    except Exception as e:
+        print(f"⚠️ Error loading local airports database: {e}")
+        return None
+
+def get_airport_from_local_db(icao_code, airports_db):
+    """
+    Get airport coordinates from local airports.json database.
     
     Args:
-        icao_code (str): 4-letter ICAO airport code (e.g., 'EGLL' for London Heathrow)
+        icao_code (str): 4-letter ICAO code
+        airports_db (dict): Loaded airports database
     
     Returns:
         tuple: (latitude, longitude) or None if not found
     """
+    if airports_db is None:
+        return None
+    
+    icao_upper = icao_code.strip().upper()
+    
+    if icao_upper in airports_db:
+        airport = airports_db[icao_upper]
+        lat = airport.get('lat')
+        lon = airport.get('lon')
+        
+        if lat is not None and lon is not None:
+            return (float(lat), float(lon))
+    
+    return None
+
+def get_airport_coordinates(icao_code, airports_db=None):
+    """
+    Retrieve airport coordinates using ICAO code.
+    Tries local database first, then falls back to API.
+    
+    Args:
+        icao_code (str): 4-letter ICAO airport code (e.g., 'EGLL' for London Heathrow)
+        airports_db (dict): Optional pre-loaded airports database
+    
+    Returns:
+        tuple: (latitude, longitude) or None if not found
+    """
+    # Try local database first
+    if airports_db is not None:
+        coords = get_airport_from_local_db(icao_code, airports_db)
+        if coords is not None:
+            print(f"📍 Found {icao_code} in local database")
+            return coords
+    
+    # Fall back to API
     url = f"{AIRPORT_DATA_API_URL}?icao={icao_code}"
     
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         response.raise_for_status()
+        
+        # Check if response has content
+        if not response.text or response.text.strip() == '':
+            print(f"⚠️ Airport {icao_code} not found in Airport-Data API (empty response)")
+            print(f"   This airport may not exist in the database.")
+            print(f"   Please verify the ICAO code is correct or add airports.json file.")
+            return None
+        
         data = response.json()
         
         if data and 'latitude' in data and 'longitude' in data:
-            return (float(data['latitude']), float(data['longitude']))
+            lat = data['latitude']
+            lon = data['longitude']
+            # Validate coordinates are valid numbers
+            if lat and lon:
+                print(f"📍 Found {icao_code} via API")
+                return (float(lat), float(lon))
+            else:
+                print(f"⚠️ Airport {icao_code} found but has invalid coordinates")
+                return None
         else:
-            print(f"Airport {icao_code} not found in Airport-Data API")
+            print(f"⚠️ Airport {icao_code} not found in Airport-Data API")
+            print(f"   Response: {response.text[:200]}")
             return None
+    except ValueError as e:
+        print(f"❌ Error parsing JSON for {icao_code}: {e}")
+        print(f"   Response: {response.text[:200]}")
+        return None
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout fetching coordinates for {icao_code}")
+        return None
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching coordinates for {icao_code}: {e}")
+        print(f"❌ Network error fetching coordinates for {icao_code}: {e}")
         return None
 
 
-def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE):
+def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE, airports_db=None):
     """
     Calculate the great circle distance between two airports using ICAO codes.
-    Uses geopy and Airport-Data API for coordinates.
+    Uses local database first, then geopy and Airport-Data API for coordinates.
     
     Args:
         icao1 (str): ICAO code of the first airport
         icao2 (str): ICAO code of the second airport
         cache_path (str): Path to cache file
+        airports_db (dict): Optional pre-loaded airports database
     
     Returns:
         int: Distance in nautical miles, or None if error
@@ -122,8 +238,8 @@ def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE):
     print(f"🌍 Calculating distance using ICAO codes: {icao1} → {icao2}")
     
     # Get coordinates for both airports
-    coords1 = get_airport_coordinates(icao1)
-    coords2 = get_airport_coordinates(icao2)
+    coords1 = get_airport_coordinates(icao1, airports_db)
+    coords2 = get_airport_coordinates(icao2, airports_db)
     
     if coords1 is None or coords2 is None:
         print(f"❌ Could not retrieve coordinates for {icao1} or {icao2}")
@@ -141,10 +257,11 @@ def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE):
     return nm
 
 
-def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path: str = CACHE_FILE):
+def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path: str = CACHE_FILE, airports_db=None):
     """
     Fetch great-circle distance in nautical miles between two airports.
     Tries IATA-based API first, falls back to ICAO-based calculation if needed.
+    Uses local airports database when available.
     Uses a JSON file cache to avoid repeated API calls.
     
     Args:
@@ -153,6 +270,7 @@ def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path:
         from_icao (str): ICAO code of origin airport (fallback)
         to_icao (str): ICAO code of destination airport (fallback)
         cache_path (str): Path to cache file
+        airports_db (dict): Optional pre-loaded airports database
     
     Returns:
         int: Distance in nautical miles
@@ -204,12 +322,23 @@ def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path:
     
     # Fallback to ICAO-based calculation
     if from_icao and to_icao and from_icao.strip() and to_icao.strip():
-        distance = calculate_distance_by_icao(from_icao, to_icao, cache_path)
+        distance = calculate_distance_by_icao(from_icao, to_icao, cache_path, airports_db)
         if distance is not None:
             return distance
     
     # If we get here, both methods failed
-    raise Exception(f"Failed to fetch distance between {from_iata or from_icao} and {to_iata or to_icao}")
+    error_msg = f"Failed to fetch distance between airports:\n"
+    error_msg += f"  Origin: {from_icao} (IATA: {from_iata or 'N/A'})\n"
+    error_msg += f"  Destination: {to_icao} (IATA: {to_iata or 'N/A'})\n"
+    error_msg += f"\nPossible causes:\n"
+    error_msg += f"  1. One or both ICAO codes don't exist in any airport database\n"
+    error_msg += f"  2. IATA codes are missing and ICAO lookup failed\n"
+    error_msg += f"  3. Network/API issues prevented lookups\n"
+    if airports_db is None:
+        error_msg += f"\n💡 NOTE: Local airports database failed to load or download.\n"
+        error_msg += f"   Check your internet connection and try again.\n"
+    error_msg += f"\nPlease verify the airport codes in your airports.txt or legs.txt file."
+    raise Exception(error_msg)
 
 def parse_airport_file(file_path):
     with open(file_path, 'r') as file:
@@ -248,6 +377,9 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
     current_number = start_flight_number
     records = []
     requests_made = 0
+    
+    # Load local airports database if available
+    airports_db = load_local_airports_db()
 
     if is_tour_mode:
         print("Generating Tours Legs")
@@ -286,7 +418,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
                 print("Reached 100 API requests, sleeping for 60 seconds...")
                 time.sleep(60)
                 requests_made = 0
-            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao)
+            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao, airports_db=airports_db)
             requests_made += 1
 
             dpt, arr, flt = calculate_flight_times(distance, avg_speed)
@@ -310,7 +442,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
                 print("Reached 100 API requests, sleeping for 60 seconds...")
                 time.sleep(60)
                 requests_made = 0
-            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao)
+            distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao, airports_db=airports_db)
             requests_made += 1
 
             pax_callsign = ""
@@ -525,6 +657,19 @@ def parse_tour_config(config_path):
             config['subfleets'] = []
     return config
 
+def cleanup_airports_db(json_file=AIRPORTS_JSON_FILE):
+    """
+    Remove the airports.json file to ensure fresh download on next run.
+    This ensures we always use the latest airport database.
+    """
+    if os.path.exists(json_file):
+        try:
+            os.remove(json_file)
+            print(f"🧹 Cleaned up {json_file} (will download fresh copy next run)")
+        except Exception as e:
+            print(f"⚠️ Could not remove {json_file}: {e}")
+            print(f"   You can manually delete it if needed.")
+
 # Example usage (uncomment to run):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
@@ -548,6 +693,8 @@ if __name__ == "__main__":
         update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"DS_Tour_{route_code}_Legs_{time_generated}.csv",True,filter_subfleets=GLOB_FILTER_SUBFLEETS)
         # cleanup the file without subfleets
         os.remove(f"DS_Tour_{route_code}_Legs_{time_generated}.csv")
+        # cleanup airports.json to fetch fresh copy next run
+        cleanup_airports_db()
     else:
         print("Schedules mode")
         os.makedirs(f"{AIRPORT_ICAO}_{route_code}", exist_ok=True)
@@ -558,3 +705,5 @@ if __name__ == "__main__":
         update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv") #add the subfleets based on flight distance
         # cleanup the file without subfleets
         os.remove(f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
+        # cleanup airports.json to fetch fresh copy next run
+        cleanup_airports_db()
