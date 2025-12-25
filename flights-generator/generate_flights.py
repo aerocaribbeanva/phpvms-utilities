@@ -18,6 +18,7 @@ START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
 AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
 AIRPORTDB_IO_API_URL = "https://airportdb.io/api/v1/airport"
+VACENTRAL_API_URL = "https://api.vacentral.net/api/airports"
 TOKEN = os.getenv("AIRPORT_GAP_TOKEN")
 AIRPORTDB_TOKEN = os.getenv("AIRPORT_DB_TOKEN")
 HEADERS = {"Authorization": f"Bearer token={TOKEN}"}
@@ -205,6 +206,53 @@ def get_airport_from_airportdb_io(icao_code):
         return None
     except requests.exceptions.RequestException as e:
         print(f"❌ Network error with AirportDB.io for {icao_code}: {e}")
+        return None
+
+def get_airport_from_vacentral(icao_code):
+    """
+    Get airport coordinates from phpVMS VAcentral API.
+    Free API, no authentication required.
+    
+    Args:
+        icao_code (str): 4-letter ICAO code
+    
+    Returns:
+        tuple: (latitude, longitude) or None if not found
+    """
+    icao_upper = icao_code.strip().upper()
+    url = f"{VACENTRAL_API_URL}/{icao_upper}"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        
+        # Check for successful response
+        if response.status_code == 200:
+            data = response.json()
+            
+            lat = data.get('lat')
+            lon = data.get('lon')
+            
+            if lat is not None and lon is not None:
+                print(f"📍 Found {icao_code} via VAcentral API")
+                return (float(lat), float(lon))
+            else:
+                print(f"⚠️ Airport {icao_code} found in VAcentral but missing coordinates")
+                return None
+        elif response.status_code == 404:
+            print(f"⚠️ Airport {icao_code} not found in VAcentral API")
+            return None
+        else:
+            print(f"⚠️ VAcentral API error ({response.status_code})")
+            return None
+            
+    except ValueError as e:
+        print(f"❌ Error parsing VAcentral response for {icao_code}: {e}")
+        return None
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout fetching from VAcentral for {icao_code}")
+        return None
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network error with VAcentral for {icao_code}: {e}")
         return None
 
 def get_airport_coordinates(icao_code, airports_db=None):
