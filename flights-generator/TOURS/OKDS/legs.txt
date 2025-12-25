@@ -7,8 +7,7 @@ FBJA-,FBKI- #Jao to Kiri
 FBKI-,FBKK- #Kiri to Kananna
 FBKK-,FBKR- #Kananna to Khwai
 FBKR-,FBMB- #Khwai to Santawani
-FBMB-,FBMR- #Santawani to Sanctuary
-FBMR-,FBNA- #Sanctuary to Chiefs Island
+FBMB-,FBNA- #Santawani to Chiefs Island
 FBNA-,FBNB- #Chiefs Island to Nxabega
 FBNB-,FBND- #Nxabega to Mapula
 FBND-,FBNG- #Mapula to Mombo
