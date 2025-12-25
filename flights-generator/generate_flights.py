@@ -43,11 +43,10 @@ def _auto_yes():
     # --yes flag set in argparse below, or CI env present
     return getattr(sys.modules[__name__], "_assume_yes", False) or os.environ.get("CI") == "true"
 
-def calculate_flight_times(distance_nm):
+def calculate_flight_times(distance_nm, avg_speed_knots=250):
     dpt_hour = random.randint(5, 22)
     dpt_minute = random.choice([0, 15, 30, 45])
     dpt_time = datetime.strptime(f"{dpt_hour:02}:{dpt_minute:02}", TIME_FMT)
-    avg_speed_knots = 250
     flight_time_min = (distance_nm / avg_speed_knots) * 60
     arr_time = dpt_time + timedelta(minutes=flight_time_min)
     return (dpt_time.strftime(TIME_FMT), arr_time.strftime(TIME_FMT), str(int(flight_time_min)))
@@ -263,6 +262,19 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
         start_date = tour_config.get("start_date","").strip()
         end_date = tour_config.get("end_date","").strip()
         filter_subfleets = tour_config.get("subfleets",[])
+        
+        # Get custom average speed from config, default to 250 knots
+        try:
+            avg_speed = int(tour_config.get("avg_speed_knots", "250"))
+            if avg_speed <= 0:
+                print("⚠️ Invalid avg_speed_knots in config (must be > 0). Using default 250 knots.")
+                avg_speed = 250
+            else:
+                print(f"✈️ Using custom average speed: {avg_speed} knots")
+        except ValueError:
+            print("⚠️ Invalid avg_speed_knots in config. Using default 250 knots.")
+            avg_speed = 250
+        
         if len(filter_subfleets) > 0:
             print("---TOUR SUBFLEET---")
             print(filter_subfleets)
@@ -277,7 +289,7 @@ def generate_flights(pairs, route_code, start_flight_number, output_csv,is_tour_
             distance = fetch_distance(a1_iata, a2_iata, a1_icao, a2_icao)
             requests_made += 1
 
-            dpt, arr, flt = calculate_flight_times(distance)
+            dpt, arr, flt = calculate_flight_times(distance, avg_speed)
 
             call_sign = ""
 
@@ -505,6 +517,7 @@ def parse_tour_config(config_path):
         config['start_flight_number'] = first_row.get('start_flight_number', '8000').strip()
         config['start_date'] = "" # f"{first_row.get('start_date').strip()} 00:00:00"
         config['end_date'] = "" # f"{first_row.get('end_date').strip()} 00:00:00"
+        config['avg_speed_knots'] = first_row.get('avg_speed_knots', '250').strip()
         filter_subfleets = first_row.get('subfleets', '').strip().upper()
         if filter_subfleets != '':
             config['subfleets'] = filter_subfleets.split(';')
