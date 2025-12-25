@@ -283,8 +283,13 @@ def get_airport_coordinates(icao_code, airports_db=None):
         coords = get_airport_from_airportdb_io(icao_code)
         if coords is not None:
             return coords
+
+    # Tier 3: Try VACenter API (phpVMS-focused)
+    coords = get_airport_from_vacentral(icao_code)
+    if coords is not None:
+        return coords
     
-    # Tier 3: Fall back to Airport-Data API
+    # Tier 4: Fall back to Airport-Data API
     url = f"{AIRPORT_DATA_API_URL}?icao={icao_code}"
     
     try:
@@ -321,7 +326,7 @@ def get_airport_coordinates(icao_code, airports_db=None):
         print(f"❌ Network error fetching coordinates for {icao_code}: {e}")
         return None
     
-    # Tier 4: All methods failed
+    # Tier 5: All methods failed
     print(f"❌ Could not find airport {icao_code} in any database")
     return None
 
