@@ -9,8 +9,7 @@ FBKK-,FBKR- #Kananna to Khwai
 FBKR-,FBMB- #Khwai to Santawani
 FBMB-,FBNB- #Santawani to Nxabega
 FBNB-,FBOM- #Nxabega to Omdop
-FBOM-,FBSW- #Omdop to Shakawe
-FBSW-,FBYM- #Shakawe to Yumbura
+FBOM-,FBYM- #Omdop to Yumbura
 FBYM-,FBXB- #Yumbura to Xaxaba
 FBXB-,FBXG- #Xaxaba to Xugana
 FBXG-,FBXI- #Xugana to Xigera
