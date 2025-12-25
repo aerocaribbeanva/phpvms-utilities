@@ -38,6 +38,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Detect changed tours and generate tour legs
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
