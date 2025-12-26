@@ -1,0 +1,14 @@
+FBAB-,FBCO- #Abu to Camp Okavango
+FBCO-,FBDT- #Camp Okavango to Delta Camp
+FBDT-,FBGU- #Delta Camp to Guma
+FBGU-,FBHU- #Guma to Hunda
+FBHU-,FBJA- #Hunda to Jao
+FBJA-,FBKI- #Jao to Kiri
+FBKI-,FBKK- #Kiri to Kananna
+FBKK-,FBKR- #Kananna to Khwai
+FBKR-,FBMB- #Khwai to Santawani
+FBMB-,FBNB- #Santawani to Nxabega
+FBNB-,FBOM- #Nxabega to Omdop
+FBOM-,FBXB- #Omdop to Xaxaba
+FBXB-,FBXG- #Xaxaba to Xugana
+FBXG-,FBXI- #Xugana to Xigera
