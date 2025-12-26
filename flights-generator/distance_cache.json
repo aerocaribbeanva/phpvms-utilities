@@ -195,7 +195,9 @@
   "LAP-PHX": 568,
   "LAS-PHX": 221,
   "LAS-SJU": 2792,
+  "LAX-ORD": 1511,
   "LAX-PHX": 320,
+  "LAX-SFO": 293,
   "LAX-SJU": 2936,
   "LGB-PHX": 307,
   "LHR-SJU": 3631,
@@ -250,6 +252,7 @@
   "OMA-PHX": 899,
   "ONT-PHX": 281,
   "ORD-SJU": 1800,
+  "ORD-YYZ": 377,
   "PDX-PHX": 876,
   "PEK-SJU": 7285,
   "PHX-PVR": 845,
@@ -300,6 +303,7 @@
   "SDQ-SJU": 208,
   "SEA-SJU": 3235,
   "SFO-SJU": 3148,
+  "SFO-YVR": 695,
   "SIG-SJU": 5,
   "SIG-STT": 64,
   "SIG-STX": 86,
@@ -317,5 +321,6 @@
   "STT-VQS": 28,
   "STX-VIJ": 49,
   "STX-VQS": 43,
-  "VIJ-VQS": 60
+  "VIJ-VQS": 60,
+  "YVR-YYZ": 1805
 }
