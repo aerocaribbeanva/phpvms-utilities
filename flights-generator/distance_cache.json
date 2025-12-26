@@ -7,6 +7,8 @@
   "ADD-CAI": 1334,
   "ADD-CPT": 2821,
   "AEP-HAV": 3713,
+  "AKL-PER": 2879,
+  "AKL-SYD": 1165,
   "AMS-BQN": 3867,
   "AMS-ORD": 3567,
   "AMS-PVG": 4807,
@@ -85,6 +87,8 @@
   "CCS-POS": 333,
   "CDG-SJU": 3732,
   "CEC-PHX": 765,
+  "CHC-PER": 2718,
+  "CHC-ZQN": 187,
   "CLO-ESM": 248,
   "CLO-HAV": 1218,
   "CLO-PTY": 376,
@@ -348,6 +352,7 @@
   "STT-VQS": 28,
   "STX-VIJ": 49,
   "STX-VQS": 43,
+  "SYD-ZQN": 1046,
   "VIE-ZRH": 325,
   "VIJ-VQS": 60
 }
