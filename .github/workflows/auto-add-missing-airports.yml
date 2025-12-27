@@ -79,18 +79,14 @@ jobs:
           import json
           from datetime import datetime
 
-          # API URLs
           AIRPORTDB_IO_API_URL = "https://airportdb.io/api/v1/airport"
-          AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
           VACENTRAL_API_URL = "https://api.vacentral.net/api/airports"
           AIRPORTS_JSON_URL = "https://raw.githubusercontent.com/mwgg/Airports/master/airports.json"
           
-          # Get tokens from environment
           AIRPORTDB_TOKEN = os.getenv('AIRPORT_DB_TOKEN')
           PHPVMSV7_ENDPOINT = os.getenv('PHPVMSV7_ENDPOINT')
           PHPVMSV7_API_KEY = os.getenv('PHPVMSV7_API_KEY')
           
-          # Parse ICAO codes
           icao_input = os.getenv('ICAO_CODES', '')
           icao_codes = [code.strip().upper() for code in icao_input.split(',') if code.strip()]
           
@@ -101,7 +97,6 @@ jobs:
           print(f"🔍 Processing {len(icao_codes)} airport(s): {', '.join(icao_codes)}")
           
           def check_vacentral(icao):
-              """Check if airport exists in VAcentral"""
               try:
                   response = requests.get(f"{VACENTRAL_API_URL}/{icao}", timeout=10)
                   if response.status_code == 200:
@@ -113,7 +108,6 @@ jobs:
               return False
           
           def get_from_local_db(icao):
-              """Try to get from mwgg/Airports JSON"""
               try:
                   response = requests.get(AIRPORTS_JSON_URL, timeout=30)
                   if response.status_code == 200:
@@ -137,7 +131,6 @@ jobs:
               return None
           
           def get_from_airportdb_io(icao):
-              """Try to get from AirportDB.io"""
               if not AIRPORTDB_TOKEN:
                   return None
               try:
@@ -161,31 +154,7 @@ jobs:
                   print(f"⚠️ Error checking AirportDB.io for {icao}: {e}")
               return None
           
-          def get_from_airport_data(icao):
-              """Try to get from Airport-Data API"""
-              try:
-                  url = f"{AIRPORT_DATA_API_URL}?icao={icao}"
-                  response = requests.get(url, timeout=10)
-                  if response.status_code == 200 and response.text.strip():
-                      data = response.json()
-                      if data and data.get('latitude') and data.get('longitude'):
-                          return {
-                              'icao': icao,
-                              'iata': data.get('iata', ''),
-                              'name': data.get('name', ''),
-                              'location': data.get('location', ''),
-                              'country': data.get('country', ''),
-                              'timezone': '',
-                              'lat': data['latitude'],
-                              'lon': data['longitude'],
-                              'source': 'airport_data'
-                          }
-              except Exception as e:
-                  print(f"⚠️ Error checking Airport-Data for {icao}: {e}")
-              return None
-          
           def verify_in_phpvms(icao):
-              """Check if airport already exists in phpVMS v7"""
               if not PHPVMSV7_ENDPOINT or not PHPVMSV7_API_KEY:
                   return False
               try:
@@ -196,7 +165,6 @@ jobs:
               except:
                   return False
           
-          # Load existing custom airports
           csv_file = 'flights-generator/custom_airports.csv'
           existing_airports = {}
           
@@ -208,7 +176,6 @@ jobs:
           except FileNotFoundError:
               print("📝 Creating new custom_airports.csv")
           
-          # Process each ICAO code
           airports_to_add = []
           skipped = []
           not_found = []
@@ -216,33 +183,26 @@ jobs:
           for icao in icao_codes:
               print(f"\n🔍 Processing {icao}...")
               
-              # Check if already in custom CSV
               if icao in existing_airports:
                   print(f"  ⏭️  Already in custom_airports.csv")
                   skipped.append({'icao': icao, 'reason': 'Already in custom CSV'})
                   continue
               
-              # Check VAcentral first
               if check_vacentral(icao):
                   print(f"  ⏭️  Found in VAcentral (no need to add)")
                   skipped.append({'icao': icao, 'reason': 'Found in VAcentral'})
                   continue
               
-              # Check if already in phpVMS v7
               if verify_in_phpvms(icao):
                   print(f"  ⏭️  Already in phpVMS v7 (should be in VAcentral soon)")
                   skipped.append({'icao': icao, 'reason': 'Already in phpVMS v7'})
                   continue
               
-              # Try to find in external sources
               airport_data = None
               
-              # Try sources in order
               airport_data = get_from_local_db(icao)
               if not airport_data:
                   airport_data = get_from_airportdb_io(icao)
-              if not airport_data:
-                  airport_data = get_from_airport_data(icao)
               
               if airport_data:
                   print(f"  ✅ Found in {airport_data['source']}")
@@ -254,7 +214,6 @@ jobs:
                   print(f"  ❌ Not found in any external source")
                   not_found.append(icao)
           
-          # Write results to output file for GitHub Actions
           with open('airport_fetch_results.json', 'w') as f:
               json.dump({
                   'added': airports_to_add,
@@ -262,7 +221,6 @@ jobs:
                   'not_found': not_found
               }, f, indent=2)
           
-          # If no airports to add, exit early
           if not airports_to_add:
               print(f"\n{'='*60}")
               print("ℹ️  No airports to add")
@@ -277,7 +235,6 @@ jobs:
               print(f"{'='*60}")
               sys.exit(0)
           
-          # Add airports to CSV
           all_airports = list(existing_airports.values())
           
           for airport_data in airports_to_add:
@@ -298,10 +255,8 @@ jobs:
                   'notes': f"Auto-added from {airport_data['source']}"
               })
           
-          # Sort by ICAO
           all_airports.sort(key=lambda x: x['icao'])
           
-          # Write to CSV
           fieldnames = [
               'icao', 'iata', 'name', 'location', 'country', 'timezone',
               'hub', 'lat', 'lon', 'ground_handling_cost',
@@ -394,7 +349,6 @@ jobs:
           body += "3. Import `custom_airports.csv` into phpVMS v7\n"
           body += "4. The verification workflow will run automatically after merge\n"
           
-          # Write to file for GitHub Actions
           with open('pr_body.txt', 'w') as f:
               f.write(body)
           
@@ -441,7 +395,6 @@ jobs:
         run: |
           BR="${{ steps.mkbranch.outputs.branch }}"
           
-          # Read PR body from file
           PR_BODY=$(cat pr_body.txt)
           
           gh pr create \
