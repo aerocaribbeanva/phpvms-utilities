@@ -8,8 +8,8 @@ FBKI-,FBKK- #Kiri to Kananna
 FBKK-,FBKR- #Kananna to Khwai
 FBKR-,FBMB- #Khwai to Santawani
 FBMB-,FBNW- #Santawani to Ntswi
-FBNW-,FBME- #Ntswi to Chitabe
-FBME-,FBMF- #Chitabe to Xakanaxa
+FBNW-,FBCT- #Ntswi to Chitabe
+FBCT-,FBMF- #Chitabe to Xakanaxa
 FBMF-,FBMJ- #Xakanaxa to Shindi
 FBMJ-,FBMQ- #Shindi to Xaranna
 FBMQ-,FBMR- #Xaranna to Sanctuary
