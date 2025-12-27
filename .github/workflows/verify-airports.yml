@@ -1,0 +1,172 @@
+name: Verify Airports in phpVMS v7
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'flights-generator/custom_airports.csv'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: flight-gen
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Get changed airports
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          # Get the diff of custom_airports.csv
+          git diff HEAD^ HEAD -- flights-generator/custom_airports.csv > changes.diff
+          
+          # Extract added ICAO codes (lines starting with +, not the header)
+          grep "^+[A-Z]" changes.diff | cut -d',' -f1 | sed 's/^+//' > new_airports.txt || true
+          
+          if [ -s new_airports.txt ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "📋 New airports detected:"
+            cat new_airports.txt | sed 's/^/  - /'
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ No new airports to verify"
+          fi
+
+      - name: Verify airports in phpVMS v7
+        if: steps.changed.outputs.has_changes == 'true'
+        env:
+          PHPVMSV7_ENDPOINT: ${{ secrets.PHPVMSV7_ENDPOINT }}
+          PHPVMSV7_API_KEY: ${{ secrets.PHPVMSV7_API_KEY }}
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          python3 << 'EOF'
+          import os
+          import requests
+          import sys
+          
+          endpoint = os.getenv('PHPVMSV7_ENDPOINT')
+          api_key = os.getenv('PHPVMSV7_API_KEY')
+          
+          if not endpoint or not api_key:
+              print("⚠️ phpVMS v7 credentials not configured")
+              print("   Set PHPVMSV7_ENDPOINT and PHPVMSV7_API_KEY secrets")
+              sys.exit(0)
+          
+          with open('new_airports.txt', 'r') as f:
+              airports = [line.strip() for line in f if line.strip()]
+          
+          if not airports:
+              print("No new airports to verify")
+              sys.exit(0)
+          
+          print(f"🔍 Verifying {len(airports)} airport(s) in phpVMS v7...")
+          print("="*60)
+          
+          failed = []
+          succeeded = []
+          
+          for icao in airports:
+              url = f"{endpoint.rstrip('/')}/api/airports/{icao}"
+              headers = {"X-API-Key": api_key}
+              
+              try:
+                  response = requests.get(url, headers=headers, timeout=10)
+                  
+                  if response.status_code == 200:
+                      data = response.json()
+                      if 'data' in data:
+                          airport_data = data['data']
+                          print(f"✅ {icao}: Found in phpVMS v7")
+                          print(f"   Name: {airport_data.get('name', 'N/A')}")
+                          print(f"   Location: {airport_data.get('city', 'N/A')}, {airport_data.get('country', 'N/A')}")
+                          succeeded.append(icao)
+                      else:
+                          print(f"❌ {icao}: Unexpected response format")
+                          failed.append(icao)
+                  elif response.status_code == 404:
+                      print(f"❌ {icao}: NOT found in phpVMS v7")
+                      failed.append(icao)
+                  else:
+                      print(f"⚠️ {icao}: API error ({response.status_code})")
+                      failed.append(icao)
+              
+              except Exception as e:
+                  print(f"❌ {icao}: Error - {e}")
+                  failed.append(icao)
+          
+          print("\n" + "="*60)
+          print(f"✅ Verified: {len(succeeded)}")
+          print(f"❌ Failed: {len(failed)}")
+          
+          if failed:
+              print("\n⚠️ The following airports are NOT in phpVMS v7:")
+              for icao in failed:
+                  print(f"   - {icao}")
+              print("\n📝 Action Required:")
+              print("   1. Import flights-generator/custom_airports.csv into phpVMS v7")
+              print("   2. Re-run this workflow to verify")
+          else:
+              print("\n🎉 All airports successfully verified!")
+          
+          print("="*60)
+          
+          # Exit with error if any failed (optional - remove if you don't want CI to fail)
+          # if failed:
+          #     sys.exit(1)
+          EOF
+
+      - name: Comment on PR (if applicable)
+        if: steps.changed.outputs.has_changes == 'true' && github.event.pull_request
+        uses: actions/github-script@v7
+        env:
+          PHPVMSV7_ENDPOINT: ${{ secrets.PHPVMSV7_ENDPOINT }}
+        with:
+          script: |
+            const fs = require('fs');
+            const airports = fs.readFileSync('new_airports.txt', 'utf8').split('\n').filter(Boolean);
+            
+            let comment = '## ✈️ Airport Verification Results\n\n';
+            comment += `Added ${airports.length} airport(s) to custom_airports.csv:\n`;
+            airports.forEach(icao => {
+              comment += `- ${icao}\n`;
+            });
+            comment += '\n';
+            
+            if (process.env.PHPVMSV7_ENDPOINT) {
+              comment += '✅ Airports will be verified in phpVMS v7 after merge.\n';
+            } else {
+              comment += '⚠️ phpVMS v7 verification is not configured.\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
