@@ -1,0 +1,298 @@
+name: Add Airport to Custom CSV
+
+on:
+  workflow_dispatch:
+    inputs:
+      icao:
+        description: 'ICAO Code (4 letters)'
+        required: true
+        type: string
+      iata:
+        description: 'IATA Code (3 letters, optional)'
+        required: false
+        type: string
+      name:
+        description: 'Airport Name'
+        required: true
+        type: string
+      location:
+        description: 'Location/City'
+        required: false
+        type: string
+      country:
+        description: 'Country'
+        required: false
+        type: string
+      timezone:
+        description: 'Timezone (e.g., America/New_York)'
+        required: false
+        type: string
+      hub:
+        description: 'Is Hub? (leave empty for no)'
+        required: false
+        type: string
+      lat:
+        description: 'Latitude (decimal degrees)'
+        required: true
+        type: string
+      lon:
+        description: 'Longitude (decimal degrees)'
+        required: true
+        type: string
+      ground_handling_cost:
+        description: 'Ground Handling Cost'
+        required: false
+        type: string
+      fuel_100ll_cost:
+        description: 'Fuel 100LL Cost'
+        required: false
+        type: string
+      fuel_jeta_cost:
+        description: 'Fuel JetA Cost'
+        required: false
+        type: string
+      fuel_mogas_cost:
+        description: 'Fuel MOGAS Cost'
+        required: false
+        type: string
+      notes:
+        description: 'Notes'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  add-airport:
+    runs-on: ubuntu-latest
+    environment: flight-gen
+    concurrency:
+      group: add-airport-${{ github.event.inputs.icao }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout main (base repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure up-to-date main
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git status -sb
+          git log --oneline -1
+
+      - name: Create working branch
+        id: mkbranch
+        shell: bash
+        run: |
+          set -euo pipefail
+          ICAO="${{ github.event.inputs.icao }}"
+          ICAO_UPPER=$(echo "$ICAO" | tr '[:lower:]' '[:upper:]')
+          ts="$(date -u +'%Y%m%d-%H%M%S')"
+          BRANCH="chore/add-airport-${ICAO_UPPER}-${ts}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "icao_upper=$ICAO_UPPER" >> "$GITHUB_OUTPUT"
+          echo "Using branch: $BRANCH"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Add airport to CSV
+        env:
+          ICAO: ${{ github.event.inputs.icao }}
+          IATA: ${{ github.event.inputs.iata }}
+          NAME: ${{ github.event.inputs.name }}
+          LOCATION: ${{ github.event.inputs.location }}
+          COUNTRY: ${{ github.event.inputs.country }}
+          TIMEZONE: ${{ github.event.inputs.timezone }}
+          HUB: ${{ github.event.inputs.hub }}
+          LAT: ${{ github.event.inputs.lat }}
+          LON: ${{ github.event.inputs.lon }}
+          GROUND_HANDLING_COST: ${{ github.event.inputs.ground_handling_cost }}
+          FUEL_100LL_COST: ${{ github.event.inputs.fuel_100ll_cost }}
+          FUEL_JETA_COST: ${{ github.event.inputs.fuel_jeta_cost }}
+          FUEL_MOGAS_COST: ${{ github.event.inputs.fuel_mogas_cost }}
+          NOTES: ${{ github.event.inputs.notes }}
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
+          PHPVMSV7_ENDPOINT: ${{ secrets.PHPVMSV7_ENDPOINT }}
+          PHPVMSV7_API_KEY: ${{ secrets.PHPVMSV7_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          python3 << 'EOF'
+          import csv
+          import sys
+          import os
+          
+          # Get input data from environment
+          new_airport = {
+              'icao': os.getenv('ICAO', '').strip().upper(),
+              'iata': os.getenv('IATA', '').strip().upper(),
+              'name': os.getenv('NAME', '').strip(),
+              'location': os.getenv('LOCATION', '').strip(),
+              'country': os.getenv('COUNTRY', '').strip(),
+              'timezone': os.getenv('TIMEZONE', '').strip(),
+              'hub': os.getenv('HUB', '').strip(),
+              'lat': os.getenv('LAT', '').strip(),
+              'lon': os.getenv('LON', '').strip(),
+              'ground_handling_cost': os.getenv('GROUND_HANDLING_COST', '').strip(),
+              'fuel_100ll_cost': os.getenv('FUEL_100LL_COST', '').strip(),
+              'fuel_jeta_cost': os.getenv('FUEL_JETA_COST', '').strip(),
+              'fuel_mogas_cost': os.getenv('FUEL_MOGAS_COST', '').strip(),
+              'notes': os.getenv('NOTES', '').strip()
+          }
+          
+          # Validate ICAO
+          if len(new_airport['icao']) != 4:
+              print(f"❌ Error: ICAO code must be 4 characters, got '{new_airport['icao']}'")
+              sys.exit(1)
+          
+          # Validate coordinates
+          try:
+              lat = float(new_airport['lat'])
+              lon = float(new_airport['lon'])
+              if not (-90 <= lat <= 90):
+                  print(f"❌ Error: Latitude must be between -90 and 90, got {lat}")
+                  sys.exit(1)
+              if not (-180 <= lon <= 180):
+                  print(f"❌ Error: Longitude must be between -180 and 180, got {lon}")
+                  sys.exit(1)
+          except ValueError as e:
+              print(f"❌ Error: Invalid coordinates - {e}")
+              sys.exit(1)
+          
+          # Read existing airports
+          csv_file = 'flights-generator/custom_airports.csv'
+          airports = []
+          
+          try:
+              with open(csv_file, 'r', encoding='utf-8') as f:
+                  reader = csv.DictReader(f)
+                  airports = list(reader)
+          except FileNotFoundError:
+              print("📝 Creating new custom_airports.csv file")
+          
+          # Check for duplicates
+          for airport in airports:
+              if airport['icao'].upper() == new_airport['icao']:
+                  print(f"❌ Error: Airport {new_airport['icao']} already exists in CSV")
+                  sys.exit(1)
+          
+          # Add new airport
+          airports.append(new_airport)
+          
+          # Sort by ICAO
+          airports.sort(key=lambda x: x['icao'])
+          
+          # Write back to file
+          fieldnames = [
+              'icao', 'iata', 'name', 'location', 'country', 'timezone',
+              'hub', 'lat', 'lon', 'ground_handling_cost',
+              'fuel_100ll_cost', 'fuel_jeta_cost', 'fuel_mogas_cost', 'notes'
+          ]
+          
+          with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+              writer = csv.DictWriter(f, fieldnames=fieldnames)
+              writer.writeheader()
+              writer.writerows(airports)
+          
+          print(f"✅ Added airport {new_airport['icao']} to {csv_file}")
+          print(f"   Name: {new_airport['name']}")
+          print(f"   Coordinates: {new_airport['lat']}, {new_airport['lon']}")
+          print(f"   Total airports: {len(airports)}")
+          EOF
+
+      - name: Detect changes
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected:"
+            git status --porcelain
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit"
+          fi
+
+      - name: Commit changes
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Add airport ${{ steps.mkbranch.outputs.icao_upper }} to custom airports"
+          git push --set-upstream origin "${{ steps.mkbranch.outputs.branch }}"
+
+      - name: Verify branch diverges from main
+        id: diverged
+        shell: bash
+        run: |
+          set -euo pipefail
+          BR="${{ steps.mkbranch.outputs.branch }}"
+          git fetch --no-tags origin main
+          git fetch --no-tags origin "$BR"
+          echo "Comparing origin/main...$BR"
+          if git diff --quiet --exit-code origin/main..."$BR"; then
+            echo "diff=false" >> "$GITHUB_OUTPUT"
+            echo "No diff vs main; skipping PR."
+          else
+            echo "diff=true" >> "$GITHUB_OUTPUT"
+            echo "Diff detected; proceeding to open PR."
+            git --no-pager diff --name-status --summary origin/main..."$BR" | sed 's/^/  /'
+          fi
+
+      - name: Open Pull Request to main (gh CLI)
+        if: steps.diverged.outputs.diff == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ICAO: ${{ steps.mkbranch.outputs.icao_upper }}
+          NAME: ${{ github.event.inputs.name }}
+          LAT: ${{ github.event.inputs.lat }}
+          LON: ${{ github.event.inputs.lon }}
+        run: |
+          BR="${{ steps.mkbranch.outputs.branch }}"
+          gh pr create \
+            --base main \
+            --head "$BR" \
+            --title "Add airport ${ICAO} - ${NAME}" \
+            --label "airport-addition" \
+            --body "## New Airport Addition
+          
+          - **ICAO:** ${ICAO}
+          - **IATA:** ${{ github.event.inputs.iata }}
+          - **Name:** ${NAME}
+          - **Location:** ${{ github.event.inputs.location }}
+          - **Country:** ${{ github.event.inputs.country }}
+          - **Coordinates:** ${LAT}, ${LON}
+          
+          This airport will be verified in phpVMS v7 upon merge.
+          
+          Generated by the **Add Airport to Custom CSV** workflow on branch \`$BR\`."
+          echo "✅ PR created."
