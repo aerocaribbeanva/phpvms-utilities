@@ -1,0 +1,4 @@
+HK0A-,HKKH- # Mara Serena to Kichwa Tembo
+HKKH-,HKLP- # Kichwa Tembo to Angama Mara, 
+HKLP-,HK48- # Angama Mara to Musiara
+HK48-,HK0A- # Musiara to Mara Serena
