@@ -168,34 +168,93 @@ def get_airport_from_custom_csv(icao_code, custom_airports=None):
     
     return None
 
-def verify_airport_in_phpvms(icao_code):
+def verify_airport_in_phpvms(icao_code, verbose=True):
+    """
+    Verify if an airport exists in phpVMS v7 system via API.
+    
+    Args:
+        icao_code: Airport ICAO code
+        verbose: Print debug information
+    
+    Returns:
+        Airport data if found, None otherwise
+    """
     if not PHPVMSV7_ENDPOINT or not PHPVMSV7_API_KEY:
+        if verbose:
+            print(f"⚠️ phpVMS v7 credentials not configured")
+            print(f"   PHPVMSV7_ENDPOINT: {PHPVMSV7_ENDPOINT or 'NOT SET'}")
+            print(f"   PHPVMSV7_API_KEY: {'SET (' + PHPVMSV7_API_KEY[:10] + '...)' if PHPVMSV7_API_KEY else 'NOT SET'}")
         return None
     
     icao_upper = icao_code.strip().upper()
-    url = f"{PHPVMSV7_ENDPOINT.rstrip('/')}/api/airports/{icao_upper}"
+    base_url = PHPVMSV7_ENDPOINT.rstrip('/')
+    url = f"{base_url}/api/airports/{icao_upper}"
     headers = {"X-API-Key": PHPVMSV7_API_KEY}
+    
+    if verbose:
+        print(f"\n{'='*60}")
+        print(f"phpVMS v7 API Check for {icao_upper}")
+        print(f"{'='*60}")
+        print(f"URL: {url}")
+        print(f"Headers: X-API-Key: {PHPVMSV7_API_KEY[:10]}...{PHPVMSV7_API_KEY[-4:]}")
+        print(f"{'='*60}")
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
         
+        if verbose:
+            print(f"Status Code: {response.status_code}")
+            print(f"Response Headers: {dict(response.headers)}")
+        
         if response.status_code == 200:
-            data = response.json()
-            if 'data' in data:
-                print(f"✅ Verified {icao_code} exists in phpVMS v7")
-                return data['data']
+            try:
+                data = response.json()
+                if verbose:
+                    print(f"Response Body:")
+                    print(json.dumps(data, indent=2))
+                
+                if 'data' in data:
+                    print(f"✅ Verified {icao_code} exists in phpVMS v7")
+                    if verbose:
+                        print(f"{'='*60}\n")
+                    return data['data']
+                else:
+                    print(f"⚠️ Response missing 'data' field")
+                    if verbose:
+                        print(f"Available keys: {list(data.keys())}")
+                        print(f"{'='*60}\n")
+                    return None
+            except json.JSONDecodeError as e:
+                print(f"❌ Failed to parse JSON response: {e}")
+                print(f"Raw response: {response.text[:500]}")
+                if verbose:
+                    print(f"{'='*60}\n")
+                return None
+                
         elif response.status_code == 404:
+            if verbose:
+                print(f"Response Body: {response.text}")
             print(f"❌ Airport {icao_code} NOT found in phpVMS v7")
+            if verbose:
+                print(f"{'='*60}\n")
             return None
         else:
+            if verbose:
+                print(f"Response Body: {response.text[:500]}")
             print(f"⚠️ phpVMS v7 API error ({response.status_code})")
+            if verbose:
+                print(f"{'='*60}\n")
             return None
             
     except requests.exceptions.Timeout:
-        print(f"⏱️ Timeout connecting to phpVMS v7")
+        print(f"⏱️ Timeout connecting to phpVMS v7 ({url})")
+        if verbose:
+            print(f"{'='*60}\n")
         return None
     except requests.exceptions.RequestException as e:
         print(f"❌ Error connecting to phpVMS v7: {e}")
+        if verbose:
+            print(f"{'='*60}\n")
         return None
 
 def generate_csv_line_for_missing_airport(icao_code, coords=None, source=None):
@@ -355,7 +414,7 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
     print(f"⚠️ {icao_upper} not found in VAcentral API")
     print(f"🔍 Checking phpVMS v7 for {icao_upper}...")
     
-    phpvms_data = verify_airport_in_phpvms(icao_code)
+    phpvms_data = verify_airport_in_phpvms(icao_code, verbose=True)
     
     if phpvms_data:
         # Airport IS in our phpVMS v7 system but NOT in VAcentral
@@ -860,6 +919,14 @@ def print_missing_airports_summary():
     print("="*80 + "\n")
 
 if __name__ == "__main__":
+    # Print environment check at startup
+    print("\n" + "="*80)
+    print("ENVIRONMENT CHECK")
+    print("="*80)
+    print(f"PHPVMSV7_ENDPOINT: {PHPVMSV7_ENDPOINT or 'NOT SET'}")
+    print(f"PHPVMSV7_API_KEY: {PHPVMSV7_API_KEY[:10] + '...' + PHPVMSV7_API_KEY[-4:] if PHPVMSV7_API_KEY else 'NOT SET'}")
+    print("="*80 + "\n")
+    
     parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
     parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA)")
     parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
