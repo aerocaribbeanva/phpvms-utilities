@@ -7,8 +7,8 @@ FBJA-,FBKI- #Jao to Kiri
 FBKI-,FBKK- #Kiri to Kananna
 FBKK-,FBKR- #Kananna to Khwai
 FBKR-,FBMB- #Khwai to Santawani
-FBMB-,FBMD- #Santawani to Ntswi
-FBMD-,FBME- #Ntswi to Chitabe
+FBMB-,FBNW- #Santawani to Ntswi
+FBNW-,FBME- #Ntswi to Chitabe
 FBME-,FBMF- #Chitabe to Xakanaxa
 FBMF-,FBMJ- #Xakanaxa to Shindi
 FBMJ-,FBMQ- #Shindi to Xaranna
