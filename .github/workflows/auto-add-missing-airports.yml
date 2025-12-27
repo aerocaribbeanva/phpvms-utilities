@@ -1,0 +1,454 @@
+name: Auto-Add Missing Airports from External Sources
+
+on:
+  workflow_dispatch:
+    inputs:
+      icao_codes:
+        description: 'Comma-separated ICAO codes to add (e.g., KJFK,EGLL,LFPG)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-add-airports:
+    runs-on: ubuntu-latest
+    environment: flight-gen
+    concurrency:
+      group: auto-add-airports-${{ github.event.inputs.icao_codes }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout main (base repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure up-to-date main
+        run: |
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git status -sb
+          git log --oneline -1
+
+      - name: Create working branch
+        id: mkbranch
+        shell: bash
+        run: |
+          set -euo pipefail
+          ts="$(date -u +'%Y%m%d-%H%M%S')"
+          BRANCH="chore/auto-add-missing-airports-${ts}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Using branch: $BRANCH"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Fetch and add missing airports
+        id: fetch_airports
+        env:
+          ICAO_CODES: ${{ github.event.inputs.icao_codes }}
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
+          PHPVMSV7_ENDPOINT: ${{ secrets.PHPVMSV7_ENDPOINT }}
+          PHPVMSV7_API_KEY: ${{ secrets.PHPVMSV7_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          python3 << 'EOF'
+          import os
+          import csv
+          import sys
+          import requests
+          import json
+          from datetime import datetime
+
+          # API URLs
+          AIRPORTDB_IO_API_URL = "https://airportdb.io/api/v1/airport"
+          AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
+          VACENTRAL_API_URL = "https://api.vacentral.net/api/airports"
+          AIRPORTS_JSON_URL = "https://raw.githubusercontent.com/mwgg/Airports/master/airports.json"
+          
+          # Get tokens from environment
+          AIRPORTDB_TOKEN = os.getenv('AIRPORT_DB_TOKEN')
+          PHPVMSV7_ENDPOINT = os.getenv('PHPVMSV7_ENDPOINT')
+          PHPVMSV7_API_KEY = os.getenv('PHPVMSV7_API_KEY')
+          
+          # Parse ICAO codes
+          icao_input = os.getenv('ICAO_CODES', '')
+          icao_codes = [code.strip().upper() for code in icao_input.split(',') if code.strip()]
+          
+          if not icao_codes:
+              print("❌ No ICAO codes provided")
+              sys.exit(1)
+          
+          print(f"🔍 Processing {len(icao_codes)} airport(s): {', '.join(icao_codes)}")
+          
+          def check_vacentral(icao):
+              """Check if airport exists in VAcentral"""
+              try:
+                  response = requests.get(f"{VACENTRAL_API_URL}/{icao}", timeout=10)
+                  if response.status_code == 200:
+                      data = response.json()
+                      if data.get('lat') and data.get('lon'):
+                          return True
+              except:
+                  pass
+              return False
+          
+          def get_from_local_db(icao):
+              """Try to get from mwgg/Airports JSON"""
+              try:
+                  response = requests.get(AIRPORTS_JSON_URL, timeout=30)
+                  if response.status_code == 200:
+                      airports = response.json()
+                      if icao in airports:
+                          airport = airports[icao]
+                          if airport.get('lat') and airport.get('lon'):
+                              return {
+                                  'icao': icao,
+                                  'iata': airport.get('iata', ''),
+                                  'name': airport.get('name', ''),
+                                  'location': airport.get('city', ''),
+                                  'country': airport.get('country', ''),
+                                  'timezone': airport.get('tz', ''),
+                                  'lat': airport['lat'],
+                                  'lon': airport['lon'],
+                                  'source': 'local_db'
+                              }
+              except Exception as e:
+                  print(f"⚠️ Error checking local DB for {icao}: {e}")
+              return None
+          
+          def get_from_airportdb_io(icao):
+              """Try to get from AirportDB.io"""
+              if not AIRPORTDB_TOKEN:
+                  return None
+              try:
+                  url = f"{AIRPORTDB_IO_API_URL}/{icao}?apiToken={AIRPORTDB_TOKEN}"
+                  response = requests.get(url, timeout=10)
+                  if response.status_code == 200:
+                      data = response.json()
+                      if data.get('latitude_deg') and data.get('longitude_deg'):
+                          return {
+                              'icao': icao,
+                              'iata': data.get('iata_code', ''),
+                              'name': data.get('name', ''),
+                              'location': data.get('municipality', ''),
+                              'country': data.get('iso_country', ''),
+                              'timezone': '',
+                              'lat': data['latitude_deg'],
+                              'lon': data['longitude_deg'],
+                              'source': 'airportdb_io'
+                          }
+              except Exception as e:
+                  print(f"⚠️ Error checking AirportDB.io for {icao}: {e}")
+              return None
+          
+          def get_from_airport_data(icao):
+              """Try to get from Airport-Data API"""
+              try:
+                  url = f"{AIRPORT_DATA_API_URL}?icao={icao}"
+                  response = requests.get(url, timeout=10)
+                  if response.status_code == 200 and response.text.strip():
+                      data = response.json()
+                      if data and data.get('latitude') and data.get('longitude'):
+                          return {
+                              'icao': icao,
+                              'iata': data.get('iata', ''),
+                              'name': data.get('name', ''),
+                              'location': data.get('location', ''),
+                              'country': data.get('country', ''),
+                              'timezone': '',
+                              'lat': data['latitude'],
+                              'lon': data['longitude'],
+                              'source': 'airport_data'
+                          }
+              except Exception as e:
+                  print(f"⚠️ Error checking Airport-Data for {icao}: {e}")
+              return None
+          
+          def verify_in_phpvms(icao):
+              """Check if airport already exists in phpVMS v7"""
+              if not PHPVMSV7_ENDPOINT or not PHPVMSV7_API_KEY:
+                  return False
+              try:
+                  url = f"{PHPVMSV7_ENDPOINT.rstrip('/')}/api/airports/{icao}"
+                  headers = {"X-API-Key": PHPVMSV7_API_KEY}
+                  response = requests.get(url, headers=headers, timeout=10)
+                  return response.status_code == 200
+              except:
+                  return False
+          
+          # Load existing custom airports
+          csv_file = 'flights-generator/custom_airports.csv'
+          existing_airports = {}
+          
+          try:
+              with open(csv_file, 'r', encoding='utf-8') as f:
+                  reader = csv.DictReader(f)
+                  for row in reader:
+                      existing_airports[row['icao'].upper()] = row
+          except FileNotFoundError:
+              print("📝 Creating new custom_airports.csv")
+          
+          # Process each ICAO code
+          airports_to_add = []
+          skipped = []
+          not_found = []
+          
+          for icao in icao_codes:
+              print(f"\n🔍 Processing {icao}...")
+              
+              # Check if already in custom CSV
+              if icao in existing_airports:
+                  print(f"  ⏭️  Already in custom_airports.csv")
+                  skipped.append({'icao': icao, 'reason': 'Already in custom CSV'})
+                  continue
+              
+              # Check VAcentral first
+              if check_vacentral(icao):
+                  print(f"  ⏭️  Found in VAcentral (no need to add)")
+                  skipped.append({'icao': icao, 'reason': 'Found in VAcentral'})
+                  continue
+              
+              # Check if already in phpVMS v7
+              if verify_in_phpvms(icao):
+                  print(f"  ⏭️  Already in phpVMS v7 (should be in VAcentral soon)")
+                  skipped.append({'icao': icao, 'reason': 'Already in phpVMS v7'})
+                  continue
+              
+              # Try to find in external sources
+              airport_data = None
+              
+              # Try sources in order
+              airport_data = get_from_local_db(icao)
+              if not airport_data:
+                  airport_data = get_from_airportdb_io(icao)
+              if not airport_data:
+                  airport_data = get_from_airport_data(icao)
+              
+              if airport_data:
+                  print(f"  ✅ Found in {airport_data['source']}")
+                  print(f"     Name: {airport_data['name']}")
+                  print(f"     Location: {airport_data['location']}, {airport_data['country']}")
+                  print(f"     Coordinates: {airport_data['lat']}, {airport_data['lon']}")
+                  airports_to_add.append(airport_data)
+              else:
+                  print(f"  ❌ Not found in any external source")
+                  not_found.append(icao)
+          
+          # Write results to output file for GitHub Actions
+          with open('airport_fetch_results.json', 'w') as f:
+              json.dump({
+                  'added': airports_to_add,
+                  'skipped': skipped,
+                  'not_found': not_found
+              }, f, indent=2)
+          
+          # If no airports to add, exit early
+          if not airports_to_add:
+              print(f"\n{'='*60}")
+              print("ℹ️  No airports to add")
+              if skipped:
+                  print(f"\n⏭️  Skipped {len(skipped)} airport(s):")
+                  for item in skipped:
+                      print(f"   - {item['icao']}: {item['reason']}")
+              if not_found:
+                  print(f"\n❌ Not found in any source ({len(not_found)} airport(s)):")
+                  for icao in not_found:
+                      print(f"   - {icao}")
+              print(f"{'='*60}")
+              sys.exit(0)
+          
+          # Add airports to CSV
+          all_airports = list(existing_airports.values())
+          
+          for airport_data in airports_to_add:
+              all_airports.append({
+                  'icao': airport_data['icao'],
+                  'iata': airport_data['iata'],
+                  'name': airport_data['name'],
+                  'location': airport_data['location'],
+                  'country': airport_data['country'],
+                  'timezone': airport_data['timezone'],
+                  'hub': '',
+                  'lat': airport_data['lat'],
+                  'lon': airport_data['lon'],
+                  'ground_handling_cost': '',
+                  'fuel_100ll_cost': '',
+                  'fuel_jeta_cost': '',
+                  'fuel_mogas_cost': '',
+                  'notes': f"Auto-added from {airport_data['source']}"
+              })
+          
+          # Sort by ICAO
+          all_airports.sort(key=lambda x: x['icao'])
+          
+          # Write to CSV
+          fieldnames = [
+              'icao', 'iata', 'name', 'location', 'country', 'timezone',
+              'hub', 'lat', 'lon', 'ground_handling_cost',
+              'fuel_100ll_cost', 'fuel_jeta_cost', 'fuel_mogas_cost', 'notes'
+          ]
+          
+          with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+              writer = csv.DictWriter(f, fieldnames=fieldnames)
+              writer.writeheader()
+              writer.writerows(all_airports)
+          
+          print(f"\n{'='*60}")
+          print(f"✅ Added {len(airports_to_add)} airport(s) to custom_airports.csv")
+          for airport in airports_to_add:
+              print(f"   - {airport['icao']}: {airport['name']} (from {airport['source']})")
+          
+          if skipped:
+              print(f"\n⏭️  Skipped {len(skipped)} airport(s):")
+              for item in skipped:
+                  print(f"   - {item['icao']}: {item['reason']}")
+          
+          if not_found:
+              print(f"\n❌ Not found in any source ({len(not_found)} airport(s)):")
+              for icao in not_found:
+                  print(f"   - {icao}")
+              print("\n⚠️  These airports will need to be added manually")
+          
+          print(f"{'='*60}")
+          EOF
+
+      - name: Detect changes
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected:"
+            git status --porcelain
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to commit"
+          fi
+
+      - name: Generate PR body
+        id: pr_body
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          python3 << 'EOF'
+          import json
+          import os
+          
+          with open('airport_fetch_results.json', 'r') as f:
+              results = json.load(f)
+          
+          added = results['added']
+          skipped = results['skipped']
+          not_found = results['not_found']
+          
+          body = "## 🛫 Auto-Added Missing Airports\n\n"
+          
+          if added:
+              body += f"### ✅ Added {len(added)} Airport(s)\n\n"
+              body += "| ICAO | Name | Location | Source |\n"
+              body += "|------|------|----------|--------|\n"
+              for airport in added:
+                  body += f"| {airport['icao']} | {airport['name']} | {airport['location']}, {airport['country']} | {airport['source']} |\n"
+              body += "\n"
+          
+          if skipped:
+              body += f"### ⏭️ Skipped {len(skipped)} Airport(s)\n\n"
+              for item in skipped:
+                  body += f"- **{item['icao']}**: {item['reason']}\n"
+              body += "\n"
+          
+          if not_found:
+              body += f"### ❌ Not Found ({len(not_found)} airport(s))\n\n"
+              body += "These airports could not be found in any external source and need manual addition:\n\n"
+              for icao in not_found:
+                  body += f"- {icao}\n"
+              body += "\n"
+          
+          body += "---\n\n"
+          body += "### 📝 Next Steps\n\n"
+          body += "1. Review the airport details above\n"
+          body += "2. Merge this PR to add airports to `custom_airports.csv`\n"
+          body += "3. Import `custom_airports.csv` into phpVMS v7\n"
+          body += "4. The verification workflow will run automatically after merge\n"
+          
+          # Write to file for GitHub Actions
+          with open('pr_body.txt', 'w') as f:
+              f.write(body)
+          
+          print("PR body generated")
+          EOF
+
+      - name: Commit changes
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Auto-add missing airports from external sources"
+          git push --set-upstream origin "${{ steps.mkbranch.outputs.branch }}"
+
+      - name: Verify branch diverges from main
+        id: diverged
+        shell: bash
+        run: |
+          set -euo pipefail
+          BR="${{ steps.mkbranch.outputs.branch }}"
+          git fetch --no-tags origin main
+          git fetch --no-tags origin "$BR"
+          echo "Comparing origin/main...$BR"
+          if git diff --quiet --exit-code origin/main..."$BR"; then
+            echo "diff=false" >> "$GITHUB_OUTPUT"
+            echo "No diff vs main; skipping PR."
+          else
+            echo "diff=true" >> "$GITHUB_OUTPUT"
+            echo "Diff detected; proceeding to open PR."
+            git --no-pager diff --name-status --summary origin/main..."$BR" | sed 's/^/  /'
+          fi
+
+      - name: Open Pull Request to main (gh CLI)
+        if: steps.diverged.outputs.diff == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BR="${{ steps.mkbranch.outputs.branch }}"
+          
+          # Read PR body from file
+          PR_BODY=$(cat pr_body.txt)
+          
+          gh pr create \
+            --base main \
+            --head "$BR" \
+            --title "🛫 Auto-add missing airports from external sources" \
+            --label "airport-addition,automated" \
+            --body "$PR_BODY"
+          
+          echo "✅ PR created successfully"
