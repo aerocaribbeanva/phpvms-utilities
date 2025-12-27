@@ -12,4 +12,3 @@ FBNB-,FBOM- #Nxabega to Omdop
 FBOM-,FBXB- #Omdop to Xaxaba
 FBXB-,FBXG- #Xaxaba to Xugana
 FBXG-,FBXI- #Xugana to Xigera
-FBXI-,FBAB- #Xigera to Abu
