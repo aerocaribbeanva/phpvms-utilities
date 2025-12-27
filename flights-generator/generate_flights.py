@@ -170,7 +170,6 @@ def get_airport_from_custom_csv(icao_code, custom_airports=None):
 
 def verify_airport_in_phpvms(icao_code):
     if not PHPVMSV7_ENDPOINT or not PHPVMSV7_API_KEY:
-        print("⚠️ phpVMS v7 credentials not configured (PHPVMSV7_ENDPOINT or PHPVMSV7_API_KEY missing)")
         return None
     
     icao_upper = icao_code.strip().upper()
@@ -329,72 +328,101 @@ def get_airport_from_vacentral(icao_code):
         return None
 
 def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
-    vacentral_found = False
-    found_source = None
-    final_coords = None
+    """
+    Retrieve airport coordinates using ICAO code.
+    Priority order:
+    1. VAcentral API (PRIMARY SOURCE - phpVMS community database)
+    2. phpVMS v7 (OUR SYSTEM - checked IMMEDIATELY after VAcentral)
+    3. Custom CSV (our managed airports for import)
+    4. External sources (local DB, AirportDB.io) - only for finding NEW airports
+    
+    CRITICAL RULES:
+    - If found in VAcentral → Use it (already in community DB)
+    - If NOT in VAcentral BUT in phpVMS v7 → Use it (already in our system)
+    - If NOT in VAcentral AND NOT in phpVMS v7 → Search externally
+    - If found externally → MUST add to phpVMS v7 before continuing
+    """
     icao_upper = icao_code.strip().upper()
     
+    # TIER 1: Check VAcentral API (PRIMARY SOURCE)
     print(f"🔍 Checking VAcentral API for {icao_upper}...")
     coords = get_airport_from_vacentral(icao_code)
     if coords is not None:
-        vacentral_found = True
-        found_source = "vacentral"
-        final_coords = coords
-        return final_coords
+        print(f"✅ {icao_upper} found in VAcentral - using community data")
+        return coords
     
-    print(f"⚠️ {icao_upper} not found in VAcentral API, checking alternatives...")
+    # NOT in VAcentral - now check OUR phpVMS v7 system IMMEDIATELY
+    print(f"⚠️ {icao_upper} not found in VAcentral API")
+    print(f"🔍 Checking phpVMS v7 for {icao_upper}...")
     
+    phpvms_data = verify_airport_in_phpvms(icao_code)
+    
+    if phpvms_data:
+        # Airport IS in our phpVMS v7 system but NOT in VAcentral
+        print(f"✅ {icao_upper} found in phpVMS v7 (not in VAcentral yet)")
+        
+        # Try to get coordinates from custom CSV first
+        coords = get_airport_from_custom_csv(icao_code, custom_airports)
+        if coords is not None:
+            return coords
+        
+        # Extract coordinates from phpVMS v7 response
+        lat = phpvms_data.get('lat')
+        lon = phpvms_data.get('lon')
+        
+        if lat is not None and lon is not None:
+            print(f"📍 Using coordinates from phpVMS v7: {lat}, {lon}")
+            return (float(lat), float(lon))
+        else:
+            print(f"⚠️ {icao_upper} in phpVMS v7 but missing coordinates!")
+            # Fall through to external search
+    
+    # NOT in VAcentral AND NOT in phpVMS v7 - search external sources
+    print(f"⚠️ {icao_upper} not found in phpVMS v7, checking external sources...")
+    
+    found_source = None
+    final_coords = None
+    
+    # Check custom CSV (for airports waiting to be imported)
     coords = get_airport_from_custom_csv(icao_code, custom_airports)
     if coords is not None:
         found_source = "custom_csv"
         final_coords = coords
-        phpvms_data = verify_airport_in_phpvms(icao_code)
-        if not phpvms_data:
-            print(f"\n{'='*80}")
-            print(f"❌ CRITICAL ERROR: {icao_upper} is in custom_airports.csv but NOT in phpVMS v7!")
-            print(f"{'='*80}")
-            print(f"\n📋 Action Required:")
-            print(f"   1. Import custom_airports.csv into phpVMS v7")
-            print(f"   2. Verify the airport appears in phpVMS v7")
-            print(f"   3. Re-run this script")
-            print(f"\n{'='*80}\n")
-            raise Exception(f"Airport {icao_upper} must be added to phpVMS v7 before continuing")
-        return final_coords
     
-    if airports_db is not None:
+    # Check local database (28,000+ airports)
+    if final_coords is None and airports_db is not None:
         coords = get_airport_from_local_db(icao_code, airports_db)
         if coords is not None:
             print(f"📍 Found {icao_code} in local database")
             found_source = "local_db"
             final_coords = coords
     
+    # Check AirportDB.io API
     if final_coords is None and AIRPORTDB_TOKEN:
         coords = get_airport_from_airportdb_io(icao_code)
         if coords is not None:
             found_source = "airportdb_io"
             final_coords = coords
     
+    # Log as missing from VAcentral
     log_missing_airport(icao_code, found_source, final_coords)
     
     if final_coords:
-        phpvms_data = verify_airport_in_phpvms(icao_code)
-        if phpvms_data:
-            print(f"✅ {icao_upper} verified in phpVMS v7 (though missing from VAcentral)")
-            return final_coords
-        else:
-            csv_line = generate_csv_line_for_missing_airport(icao_code, final_coords, found_source)
-            print(f"\n{'='*80}")
-            print(f"❌ CRITICAL: {icao_upper} found in {found_source} but NOT in phpVMS v7!")
-            print(f"{'='*80}")
-            print(f"\n📋 Add this line to custom_airports.csv:")
-            print(f"   {csv_line}")
-            print(f"\n📝 Then:")
-            print(f"   1. Import custom_airports.csv into phpVMS v7")
-            print(f"   2. Verify the airport appears in phpVMS v7")
-            print(f"   3. Re-run this script")
-            print(f"\n{'='*80}\n")
-            raise Exception(f"Airport {icao_upper} must be added to phpVMS v7 before continuing")
+        # Found in external source - MUST add to phpVMS v7
+        csv_line = generate_csv_line_for_missing_airport(icao_code, final_coords, found_source)
+        print(f"\n{'='*80}")
+        print(f"❌ CRITICAL: {icao_upper} found in {found_source} but NOT in phpVMS v7!")
+        print(f"{'='*80}")
+        print(f"\n📋 Add this line to custom_airports.csv:")
+        print(f"   {csv_line}")
+        print(f"\n📝 Then:")
+        print(f"   1. Import custom_airports.csv into phpVMS v7")
+        print(f"   2. Verify the airport appears in phpVMS v7")
+        print(f"   3. Re-run this script")
+        print(f"\n{'='*80}\n")
+        raise Exception(f"Airport {icao_upper} must be added to phpVMS v7 before continuing")
     
+    # NOT found anywhere
     print(f"❌ Could not find airport {icao_code} in any database")
     csv_line = generate_csv_line_for_missing_airport(icao_code, None, None)
     print(f"\n{'='*80}")
