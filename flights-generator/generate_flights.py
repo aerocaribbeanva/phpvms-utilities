@@ -13,12 +13,11 @@ from geopy.distance import geodesic
 # Constants
 GLOB_FILTER_SUBFLEETS=[]
 CACHE_FILE = "distance_cache.json"
-AIRPORTS_JSON_FILE = "airports.json"  # Local backup database
+AIRPORTS_JSON_FILE = "airports.json"  # Local backup database (28,000+ airports)
 CUSTOM_AIRPORTS_CSV = "custom_airports.csv"  # Custom managed airports
 MISSING_AIRPORTS_FILE = "missing_airports.json"
 START_FLIGHT_NUMBER = 1000
 API_URL = "https://airportgap.com/api/airports/distance"
-AIRPORT_DATA_API_URL = "https://www.airport-data.com/api/ap_info.json"
 AIRPORTDB_IO_API_URL = "https://airportdb.io/api/v1/airport"
 VACENTRAL_API_URL = "https://api.vacentral.net/api/airports"
 PHPVMSV7_ENDPOINT = os.getenv("PHPVMSV7_ENDPOINT")
@@ -34,8 +33,8 @@ special_code_to_airline = {
 }
 
 v5_flight_type_to_v7 = {
-    "P" : "J", # vuelos comerciales scheduled
-    "C" : "F"  # vuelos de carga scheduled
+    "P" : "J",
+    "C" : "F"
 }
 
 airline_subfleet_by_flight_type = {
@@ -74,12 +73,10 @@ def _save_cache(cache: dict, path=CACHE_FILE):
     os.replace(tmp, path)
 
 def _key_for_route(from_code: str, to_code: str) -> str:
-    """Symmetric cache key so A-B and B-A hit the same entry."""
     a, b = from_code.strip().upper(), to_code.strip().upper()
     return f"{min(a,b)}-{max(a,b)}"
 
 def load_missing_airports(path=MISSING_AIRPORTS_FILE):
-    """Load the list of airports missing from VAcentral API."""
     if os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -89,14 +86,12 @@ def load_missing_airports(path=MISSING_AIRPORTS_FILE):
     return {}
 
 def save_missing_airports(missing_airports: dict, path=MISSING_AIRPORTS_FILE):
-    """Save the list of airports missing from VAcentral API."""
     tmp = f"{path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(missing_airports, f, ensure_ascii=False, indent=2, sort_keys=True)
     os.replace(tmp, path)
 
 def log_missing_airport(icao_code, found_in=None, coordinates=None):
-    """Log an airport that's missing from VAcentral API."""
     missing_airports = load_missing_airports()
     icao_upper = icao_code.strip().upper()
     
@@ -121,7 +116,6 @@ def log_missing_airport(icao_code, found_in=None, coordinates=None):
             print(f"📝 Logged {icao_upper} as missing from VAcentral (NOT FOUND ANYWHERE)")
 
 def load_custom_airports_csv(path=CUSTOM_AIRPORTS_CSV):
-    """Load custom airports from CSV file."""
     if not os.path.exists(path):
         with open(path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -158,7 +152,6 @@ def load_custom_airports_csv(path=CUSTOM_AIRPORTS_CSV):
     return airports
 
 def get_airport_from_custom_csv(icao_code, custom_airports=None):
-    """Get airport coordinates from custom CSV file."""
     if custom_airports is None:
         custom_airports = load_custom_airports_csv()
     
@@ -176,7 +169,6 @@ def get_airport_from_custom_csv(icao_code, custom_airports=None):
     return None
 
 def verify_airport_in_phpvms(icao_code):
-    """Verify if an airport exists in phpVMS v7 system via API."""
     if not PHPVMSV7_ENDPOINT or not PHPVMSV7_API_KEY:
         print("⚠️ phpVMS v7 credentials not configured (PHPVMSV7_ENDPOINT or PHPVMSV7_API_KEY missing)")
         return None
@@ -208,7 +200,6 @@ def verify_airport_in_phpvms(icao_code):
         return None
 
 def generate_csv_line_for_missing_airport(icao_code, coords=None, source=None):
-    """Generate a CSV line that can be added to custom_airports.csv"""
     lat = coords[0] if coords else ''
     lon = coords[1] if coords else ''
     notes = f'Found in {source}' if source else 'Needs manual verification'
@@ -216,7 +207,6 @@ def generate_csv_line_for_missing_airport(icao_code, coords=None, source=None):
     return f"{icao_code.upper()},,,,,,{lat},{lon},,,,,{notes}"
 
 def load_local_airports_db(json_file=AIRPORTS_JSON_FILE):
-    """Load the local airports.json database."""
     if not os.path.exists(json_file):
         print(f"📥 airports.json not found. Attempting to download from GitHub...")
         download_url = "https://raw.githubusercontent.com/mwgg/Airports/master/airports.json"
@@ -245,7 +235,6 @@ def load_local_airports_db(json_file=AIRPORTS_JSON_FILE):
         return None
 
 def get_airport_from_local_db(icao_code, airports_db):
-    """Get airport coordinates from local airports.json database."""
     if airports_db is None:
         return None
     
@@ -262,7 +251,6 @@ def get_airport_from_local_db(icao_code, airports_db):
     return None
 
 def get_airport_from_airportdb_io(icao_code):
-    """Get airport coordinates from AirportDB.io API."""
     if not AIRPORTDB_TOKEN:
         return None
     
@@ -305,7 +293,6 @@ def get_airport_from_airportdb_io(icao_code):
         return None
 
 def get_airport_from_vacentral(icao_code):
-    """Get airport coordinates from phpVMS VAcentral API."""
     icao_upper = icao_code.strip().upper()
     url = f"{VACENTRAL_API_URL}/{icao_upper}"
     
@@ -342,23 +329,11 @@ def get_airport_from_vacentral(icao_code):
         return None
 
 def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
-    """
-    Retrieve airport coordinates using ICAO code.
-    Priority order:
-    1. VAcentral API (PRIMARY SOURCE - phpVMS system)
-    2. Custom CSV (our managed airports that should be in phpVMS)
-    3. Local database (airports.json)
-    4. AirportDB.io API
-    5. Airport-Data API (fallback)
-    
-    CRITICAL: If not found in VAcentral, it MUST be in our phpVMS v7 database.
-    """
     vacentral_found = False
     found_source = None
     final_coords = None
     icao_upper = icao_code.strip().upper()
     
-    # Tier 1: VAcentral API (PRIMARY SOURCE - phpVMS system)
     print(f"🔍 Checking VAcentral API for {icao_upper}...")
     coords = get_airport_from_vacentral(icao_code)
     if coords is not None:
@@ -367,15 +342,12 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
         final_coords = coords
         return final_coords
     
-    # If not in VAcentral, try other sources but MUST verify in phpVMS v7
     print(f"⚠️ {icao_upper} not found in VAcentral API, checking alternatives...")
     
-    # Tier 2: Check custom CSV (should already be in phpVMS)
     coords = get_airport_from_custom_csv(icao_code, custom_airports)
     if coords is not None:
         found_source = "custom_csv"
         final_coords = coords
-        # Verify it's actually in phpVMS v7
         phpvms_data = verify_airport_in_phpvms(icao_code)
         if not phpvms_data:
             print(f"\n{'='*80}")
@@ -389,7 +361,6 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
             raise Exception(f"Airport {icao_upper} must be added to phpVMS v7 before continuing")
         return final_coords
     
-    # Tier 3: Try local database
     if airports_db is not None:
         coords = get_airport_from_local_db(icao_code, airports_db)
         if coords is not None:
@@ -397,47 +368,20 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
             found_source = "local_db"
             final_coords = coords
     
-    # Tier 4: Try AirportDB.io API
     if final_coords is None and AIRPORTDB_TOKEN:
         coords = get_airport_from_airportdb_io(icao_code)
         if coords is not None:
             found_source = "airportdb_io"
             final_coords = coords
     
-    # Tier 5: Fall back to Airport-Data API
-    if final_coords is None:
-        url = f"{AIRPORT_DATA_API_URL}?icao={icao_code}"
-        
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            
-            if not response.text or response.text.strip() == '':
-                print(f"⚠️ Airport {icao_code} not found in Airport-Data API (empty response)")
-            else:
-                data = response.json()
-                
-                if data and 'latitude' in data and 'longitude' in data:
-                    lat = data['latitude']
-                    lon = data['longitude']
-                    if lat and lon:
-                        print(f"📍 Found {icao_code} via Airport-Data API")
-                        found_source = "airport_data"
-                        final_coords = (float(lat), float(lon))
-        except Exception as e:
-            print(f"❌ Error with Airport-Data API for {icao_code}: {e}")
-    
-    # NOT found in VAcentral - log and check phpVMS
     log_missing_airport(icao_code, found_source, final_coords)
     
     if final_coords:
-        # Found elsewhere - MUST verify in phpVMS v7
         phpvms_data = verify_airport_in_phpvms(icao_code)
         if phpvms_data:
             print(f"✅ {icao_upper} verified in phpVMS v7 (though missing from VAcentral)")
             return final_coords
         else:
-            # NOT in phpVMS v7 - MUST ADD IT
             csv_line = generate_csv_line_for_missing_airport(icao_code, final_coords, found_source)
             print(f"\n{'='*80}")
             print(f"❌ CRITICAL: {icao_upper} found in {found_source} but NOT in phpVMS v7!")
@@ -451,7 +395,6 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
             print(f"\n{'='*80}\n")
             raise Exception(f"Airport {icao_upper} must be added to phpVMS v7 before continuing")
     
-    # NOT found anywhere
     print(f"❌ Could not find airport {icao_code} in any database")
     csv_line = generate_csv_line_for_missing_airport(icao_code, None, None)
     print(f"\n{'='*80}")
@@ -464,11 +407,14 @@ def get_airport_coordinates(icao_code, airports_db=None, custom_airports=None):
     print(f"   2. Import custom_airports.csv into phpVMS v7")
     print(f"   3. Verify the airport appears in phpVMS v7")
     print(f"   4. Re-run this script")
+    print(f"\n💡 Tip: Search for '{icao_upper}' on:")
+    print(f"   - https://www.airnav.com/airport/{icao_upper}")
+    print(f"   - https://skyvector.com/airport/{icao_upper}")
+    print(f"   - https://ourairports.com/airports/{icao_upper}/")
     print(f"\n{'='*80}\n")
     raise Exception(f"Airport {icao_upper} not found - add to custom_airports.csv and phpVMS v7")
 
 def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE, airports_db=None, custom_airports=None):
-    """Calculate the great circle distance between two airports using ICAO codes."""
     cache = _load_cache(cache_path)
     key = _key_for_route(icao1, icao2)
 
@@ -494,7 +440,6 @@ def calculate_distance_by_icao(icao1, icao2, cache_path: str = CACHE_FILE, airpo
     return nm
 
 def fetch_distance(from_iata, to_iata, from_icao=None, to_icao=None, cache_path: str = CACHE_FILE, airports_db=None, custom_airports=None):
-    """Fetch great-circle distance in nautical miles between two airports."""
     cache = _load_cache(cache_path)
     
     if from_iata and to_iata and from_iata.strip() and to_iata.strip():
@@ -836,7 +781,6 @@ def parse_tour_config(config_path):
     return config
 
 def cleanup_airports_db(json_file=AIRPORTS_JSON_FILE):
-    """Remove the airports.json file to ensure fresh download on next run."""
     if os.path.exists(json_file):
         try:
             os.remove(json_file)
@@ -845,7 +789,6 @@ def cleanup_airports_db(json_file=AIRPORTS_JSON_FILE):
             print(f"⚠️ Could not remove {json_file}: {e}")
 
 def print_missing_airports_summary():
-    """Print a summary of airports missing from VAcentral API with CSV import instructions."""
     missing_airports = load_missing_airports()
     
     if not missing_airports:
