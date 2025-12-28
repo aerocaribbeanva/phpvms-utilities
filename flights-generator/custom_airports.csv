@@ -1,0 +1,10 @@
+icao,iata,name,location,country,timezone,hub,lat,lon,ground_handling_cost,fuel_100ll_cost,fuel_jeta_cost,fuel_mogas_cost,notes
+FBMF,,Xakanaxa airport,Botswana,Africa,,,-19.197520898347367,23.43485033786718,,,,,
+FBMJ,,Shindi Lodge Airport,Botswana,Africa,,,-19.110265,23.162305,,,,,
+FBMQ,,Xaranna Airstrip,Botswana,Africa,,,-19.658,22.953,,,,,
+FBMR,,Sanctuary Airstrip,Botswana,Africa,,,-19.6263,23.2794,,,,,
+FBNA,,Chief's Island Airport,Botswana,Africa,,,-19.31418,22.94975,,,,,
+FBND,,Mapula Airport,Botswana,Africa,,,-18.78766,22.8297,,,,,
+FBNH,,Xamaxai Airport,Botswana,Africa,,,-18.8789,22.7136,,,,,
+FBSH,,Seronga Airport,Botswana,Africa,,,-18.8233030000,22.4226190000,,,,,
+FBNO,,Pom Pom Airstrip,Botswana,Africa,,,-19.5973,22.8481,,,,,

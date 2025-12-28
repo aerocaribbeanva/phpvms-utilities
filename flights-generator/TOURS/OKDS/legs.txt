@@ -6,10 +6,24 @@ FBHU-,FBJA- #Hunda to Jao
 FBJA-,FBKI- #Jao to Kiri
 FBKI-,FBKK- #Kiri to Kananna
 FBKK-,FBKR- #Kananna to Khwai
-FBKR-,FBMB- #Khwai to Santawani
-FBMB-,FBNB- #Santawani to Nxabega
-FBNB-,FBOM- #Nxabega to Omdop
-FBOM-,FBXB- #Omdop to Xaxaba
+FBKR-,FBST- #Khwai to Santawani
+FBST-,FBNW- #Santawani to Ntswi
+FBNW-,FBCT- #Ntswi to Chitabe
+FBCT-,FBMF- #Chitabe to Xakanaxa
+FBMF-,FBMJ- #Xakanaxa to Shindi
+FBMJ-,FBMQ- #Shindi to Xaranna
+FBMQ-,FBMR- #Xaranna to Sanctuary
+FBMR-,FBNA- #Sanctuary to Chiefs Island
+FBNA-,FBNB- #Chiefs Island to Nxabega
+FBNB-,FBND- #Nxabega to Mapula
+FBND-,FBMB- #Mapula to Mombo
+FBMB-,FBNH- #Mombo to Xamaxai
+FBNH-,FBNO- #Xamaxai to Pom Pom
+FBNO-,FBOM- #Pom Pom to Omdop
+FBOM-,FBSH- #Omdop to Seronga
+FBSH-,FBSW- #Seronga to Shakawe
+FBSW-,FBVM- #Shakawe to Vumbura
+FBVM-,FBXB- #Vumbura to Xaxaba
 FBXB-,FBXG- #Xaxaba to Xugana
 FBXG-,FBXI- #Xugana to Xigera
 FBXI-,FBAB- #Xigera to Abu
