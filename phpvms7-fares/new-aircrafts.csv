@@ -36,6 +36,7 @@ H60,H60,Sikorsky Helicopter,AC-T1933,false,9/28/25
 AN26,AN26,ANTONOV AN-26 Combined Cargo and Pax,AC-T1934,false,11/05/25
 AN26,AN26,ANTONOV AN-26 Combined Cargo and Pax,AC-T1935,false,11/05/25
 AN26,AN26,ANTONOV AN-26 Combined Cargo and Pax,AC-T1936,false,11/05/25
-B77F,B77F,Boeing 777 Freighter,AC-C1903,true,6/12/25
-B77F,B77F,Boeing 777 Freighter,AC-C1904,true,6/12/25
-B77F,B77F,Boeing 777 Freighter,AC-C1905,true,6/12/25
+B77F,B77F,Boeing 777 Freighter,AC-C1903,true,12/06/25
+B77F,B77F,Boeing 777 Freighter,AC-C1904,true,12/06/25
+B77F,B77F,Boeing 777 Freighter,AC-C1905,true,12/06/25
+GA8,GA8,GippsAero GA8 Airvan,AC-T1937,false,12/30/25
