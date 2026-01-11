@@ -5,7 +5,7 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-11-17-25.csv'
+CSV_INPUT = 'subfleets-01-10-26.csv'
 JSON_INPUT = 'aircraft_data_20251105_122842.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
@@ -29,6 +29,34 @@ CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 # }
 
 custom_fare_data = {
+        "AN24" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1741455854388",
+            "airframe_internal_id" : "1098250_1741455854388",    
+            "icao": "AN24",
+            "aircraft_name": "Antonov AN-24RV",
+            "base_type": "DH8C",
+            "default_pax": 44,
+            "mzfw_lbs": 46297.0,
+            "oei_lbs": 34172.0,
+            "is_freighter": False,
+            "F": 0,
+            "J": 0,
+            "Y": 44
+        },
+        "AN24F" : {
+            "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1768066182649",
+            "airframe_internal_id" : "1098250_1768066182649",    
+            "icao": "AN24",
+            "aircraft_name": "Antonov AN-24RV",
+            "base_type": "DH8C",
+            "default_pax": 0,
+            "mzfw_lbs": 43650.0,
+            "oei_lbs": 31000.0,
+            "is_freighter": True,
+            "F": 0,
+            "J": 0,
+            "Y": 0
+        },
         "AN26" : {
             "profile_url" : "https://dispatch.simbrief.com/airframes/share/1098250_1741417583325",
             "airframe_internal_id" : "1098250_1741417583325",    
