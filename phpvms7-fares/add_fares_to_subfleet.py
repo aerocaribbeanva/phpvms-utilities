@@ -5,8 +5,8 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-01-10-26.csv'
-JSON_INPUT = 'aircraft_data_20251105_122842.json'
+CSV_INPUT = 'subfleets-01-16-26.csv'
+JSON_INPUT = 'aircraft_data_20260116_003044.json'
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 CSV_OUTPUT = f'final_subfleets_with_updated_fares.csv'
 
