@@ -21,7 +21,7 @@ A225,A225,Antonov An-225 Mriya,AC-C1899,true,6/12/25
 BN2P,BN2P,Britten-Norman BN-2 Islander,AC-T1922,false,6/12/25
 TRIS,TRIS,Britten-Norman BN-2A Trislander,AC-T1923,false,6/12/25
 SH33,SH33,Short 330,AC-T1924,false,6/12/25
-SH36,SH36,Short 360,AC-T1925,false,6/12/25
+SH36,SH36,Short 360,AC-T1925,false,6/12/25 imitate
 SH33F,SH33,Short 330 Freighter,AC-C1900,true,6/12/25
 SH36F,SH36,Short 360 Freighter,AC-C1901,true,6/12/25
 B733,B733,Boeing 737-300,AC-T1926,true,6/12/25
@@ -39,4 +39,7 @@ AN26,AN26,ANTONOV AN-26 Combined Cargo and Pax,AC-T1936,false,11/05/25
 B77F,B77F,Boeing 777 Freighter,AC-C1903,true,12/06/25
 B77F,B77F,Boeing 777 Freighter,AC-C1904,true,12/06/25
 B77F,B77F,Boeing 777 Freighter,AC-C1905,true,12/06/25
-GA8,GA8,GippsAero GA8 Airvan,AC-T1937,false,12/30/25
+GA8,GA8,GippsAero GA8 Airvan,AC-T1938,false,12/30/25
+C208,C208,Cessna 208 Caravan,AC-T1939,false,12/31/25
+12/30/25
+C208,C208,Cessna 208 Caravan,AC-T1940,false,12/31/25
