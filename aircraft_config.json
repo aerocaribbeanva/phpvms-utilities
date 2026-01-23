@@ -1,0 +1,858 @@
+{
+  "A124": {
+    "range": "3200",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "A20N": {
+    "range": "3500",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A21N": {
+    "range": "4000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A225": {
+    "range": "3900",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "A306": {
+    "range": "4000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A30F": {
+    "range": "4200",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "A310": {
+    "range": "5150",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A319": {
+    "range": "3700",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A320": {
+    "range": "3300",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A321": {
+    "range": "2300",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A332": {
+    "range": "7250",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A333": {
+    "range": "6350",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A333F": {
+    "range": "6350",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "A346": {
+    "range": "7900",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A359": {
+    "range": "8100",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A388": {
+    "range": "8000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AN2": {
+    "range": "450",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AN24": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AN24F": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "AN26": {
+    "range": "1100",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AN26F": {
+    "range": "1100",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "AT45": {
+    "range": "850",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AT46": {
+    "range": "800",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AT75": {
+    "range": "825",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AT76": {
+    "range": "950",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "AT76F": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B38M": {
+    "range": "3550",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B48F": {
+    "range": "4200",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B712": {
+    "range": "2060",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B722": {
+    "range": "2500",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B722F": {
+    "range": "2500",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B732": {
+    "range": "2300",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B733": {
+    "range": "2255",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B734": {
+    "range": "2060",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B735": {
+    "range": "1600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B736": {
+    "range": "3600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B737": {
+    "range": "3350",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B738": {
+    "range": "3400",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B738F": {
+    "range": "3400",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B739": {
+    "range": "3200",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B744": {
+    "range": "7260",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B74F": {
+    "range": "4970",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B752": {
+    "range": "3900",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B753": {
+    "range": "3800",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B75F": {
+    "range": "3600",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B762": {
+    "range": "3900",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B763": {
+    "range": "6000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B764": {
+    "range": "6000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B76F": {
+    "range": "3255",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B77F": {
+    "range": "8555",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "B77L": {
+    "range": "8555",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B77W": {
+    "range": "7370",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B788": {
+    "range": "7355",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B789": {
+    "range": "7600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "B78X": {
+    "range": "6300",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "BBJ2": {
+    "range": "3400",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "BCS1": {
+    "range": "3400",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "BCS3": {
+    "range": "3300",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "BN2P": {
+    "range": "620",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C130": {
+    "range": "2049",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C172": {
+    "range": "600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C208": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C25C": {
+    "range": "2165",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C402": {
+    "range": "920",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C408": {
+    "range": "900",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "C750": {
+    "range": "3460",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "DH8D": {
+    "range": "1100",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "DHC6": {
+    "range": "771",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E110": {
+    "range": "1200",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E140": {
+    "range": "1600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E145": {
+    "range": "1550",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E175": {
+    "range": "2000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E190": {
+    "range": "2400",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "E190F": {
+    "range": "2300",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "E195": {
+    "range": "2200",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "EC35": {
+    "range": "342",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "EC45": {
+    "range": "351",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "GA8": {
+    "range": "730",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "H60": {
+    "range": "700",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "IL18": {
+    "range": "2200",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "IL18F": {
+    "range": "2200",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "IL96": {
+    "range": "6000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "KODI": {
+    "range": "1132",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "L410": {
+    "range": "800",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MD11": {
+    "range": "7000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MD1F": {
+    "range": "3800",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "MD82": {
+    "range": "2050",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MD83": {
+    "range": "2550",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MD88": {
+    "range": "2700",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MD90": {
+    "range": "2455",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "MI8": {
+    "range": "335",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "P212": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "PC12": {
+    "range": "1845",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "R722": {
+    "range": "2950",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "R722F": {
+    "range": "2950",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "RJ1H": {
+    "range": "1550",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "RJ1HF": {
+    "range": "1490",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "RJ70": {
+    "range": "1660",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "RJ85": {
+    "range": "1600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "SH33": {
+    "range": "600",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "SH33F": {
+    "range": "600",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "SH36": {
+    "range": "800",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "SH36F": {
+    "range": "800",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
+  "SU95": {
+    "range": "2700",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "TBM9": {
+    "range": "1730",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "TRIS": {
+    "range": "620",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "YK40": {
+    "range": "1000",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  }
+}
