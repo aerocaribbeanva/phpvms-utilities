@@ -1,6 +1,80 @@
-import csv,time,os
+import csv,time,os,json
 from datetime import datetime,timedelta
 from argparse import ArgumentParser
+
+# Constants
+AIRCRAFT_CONFIG_FILE = "aircraft_config.json"
+
+def load_aircraft_config(config_file=AIRCRAFT_CONFIG_FILE):
+    """
+    Load aircraft configuration from JSON file.
+
+    Returns:
+        dict: Aircraft configuration with ICAO codes as keys
+    """
+    # Try to load from current directory first, then parent directory
+    config_paths = [
+        config_file,
+        os.path.join(os.path.dirname(__file__), config_file),
+        os.path.join(os.path.dirname(__file__), '..', config_file)
+    ]
+
+    for path in config_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    print(f"✅ Loaded aircraft configuration from {path}")
+                    return config
+            except Exception as e:
+                print(f"⚠️ Error loading aircraft config from {path}: {e}")
+
+    print(f"❌ Aircraft configuration file not found. Searched:")
+    for path in config_paths:
+        print(f"   - {path}")
+    raise FileNotFoundError(f"Aircraft configuration file '{config_file}' not found")
+
+def build_airline_subfleet_by_flight_type(aircraft_config):
+    """
+    Build airline_subfleet_by_flight_type dictionary from aircraft config.
+
+    Args:
+        aircraft_config: Aircraft configuration dictionary
+
+    Returns:
+        dict: Nested dictionary {airline: {flight_type: [aircraft_icao, ...]}}
+    """
+    result = {}
+
+    for icao, data in aircraft_config.items():
+        airlines = data.get('airlines', {})
+        for airline, flight_types in airlines.items():
+            if airline not in result:
+                result[airline] = {}
+
+            for flight_type in flight_types:
+                if flight_type not in result[airline]:
+                    result[airline][flight_type] = []
+                result[airline][flight_type].append(icao)
+
+    return result
+
+def build_aircrafts_range_by_icao(aircraft_config):
+    """
+    Build aircrafts_range_by_icao dictionary from aircraft config.
+
+    Args:
+        aircraft_config: Aircraft configuration dictionary
+
+    Returns:
+        dict: Dictionary {aircraft_icao: range_nm}
+    """
+    return {icao: data['range'] for icao, data in aircraft_config.items()}
+
+# Load aircraft configuration from JSON
+_aircraft_config = load_aircraft_config()
+airline_subfleet_by_flight_type = build_airline_subfleet_by_flight_type(_aircraft_config)
+aircrafts_range_by_icao = build_aircrafts_range_by_icao(_aircraft_config)
 
 special_code_to_airline = {
     "CRC" : "CRN"
@@ -10,15 +84,6 @@ v5_flight_type_to_v7 = {
     "P" : "J", # vuelos comerciales scheduled
     "C" : "F"  # vuelos de carga scheduled
 }
-
-airline_subfleet_by_flight_type = {
-    "CRN" : {
-        "J" : ["BBJ2","H60","C402","DHC6","EC35","EC45","B734","B733","SH36","SH33","TRIS","BN2P","GA8","MI8","AN2","C172","B789","B78X","B762","BCS1","BCS3","A306","SU95","C208","B736","A20N","A21N","A310","A319","A320","A321","A332","A333","A346","A359","A388","AN24","AN26","AT45","AT46","AT75","AT76","B38M","B712","B732","B735","B737","B738","B739","B744","B752","B753","B763","B764","B77L","B77W","B788","C25C","DH8D","E110","E140","E145","E175","E190","E195","IL18","IL96","KODI","L410","PC12","TBM9","YK40"], #passengers subfleet string
-        "F" : ["A333F","B738F","AN26F","SH36F","SH33F","A124","AT76F","E190F","A225","A30F","B48F","B74F","B75F","B76F","B77F","MD1F","IL18F"], #freighter subfleet
-    }
-}
-
-aircrafts_range_by_icao = {'IL18F':'2200','BBJ2':'3400','A333F':'6350','B738F':'3400','AN26F':'1100','H60':'700','C402':'920','DHC6':'771','EC35':'342','EC45':'351','SH36F':'800','SH33F':'600','B734':'2060','B733':'2255','SH36':'800','SH33':'600','TRIS':'620','BN2P':'620','GA8':'730','MI8':'335','AN2':'450','A124':'3200','AT76F':'1000','E190F':'2300','C172':'600','B789':'7600','B78X':'6300','B762':'3900','BCS1':'3400','BCS3':'3300','A306':'4000','SU95':'2700','C208':'1000','B736':'3600','A225': '3900','A20N': '3500', 'A21N': '4000', 'A30F': '4200', 'A310': '5150', 'A319': '3700', 'A320': '3300', 'A321': '2300', 'A332': '7250', 'A333': '6350', 'A346': '7900', 'A359': '8100', 'A388': '8000', 'AN24': '1000', 'AN26': '1100', 'AT45': '850', 'AT46': '800', 'AT75': '825', 'AT76': '950', 'B38M': '3550', 'B48F': '4200', 'B712': '2060', 'B732': '2300', 'B735': '1600', 'B737': '3350', 'B738': '3400', 'B739': '3200', 'B744': '7260', 'B74F': '4970', 'B752': '3900', 'B753': '3800', 'B75F': '3600', 'B763': '6000', 'B764': '6000', 'B76F': '3255', 'B77F': '8555', 'B77L': '8555', 'B77W': '7370', 'B788': '7355', 'C25C': '2165', 'DH8D': '1100', 'E110': '1200', 'E140': '1600', 'E145': '1550', 'E175': '2000', 'E190': '2400', 'E195': '2200', 'IL18': '2200', 'IL96': '6000', 'KODI': '1132', 'L410': '800', 'MD1F': '3800', 'PC12': '1845', 'TBM9': '1730', 'YK40': '1000'}
 
 def validate_subfleets(file):
     with open(file,'r') as csvfile:

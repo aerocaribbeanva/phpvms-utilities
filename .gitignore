@@ -178,3 +178,6 @@ cython_debug/
 
 # ignore macos files
 *.DS_Store*
+
+# Claude Code documentation
+CLAUDE.md
