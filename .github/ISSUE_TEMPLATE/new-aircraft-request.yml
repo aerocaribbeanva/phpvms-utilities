@@ -12,6 +12,11 @@ body:
         ## New Aircraft Request
         Please fill out the information below to add a new aircraft to the fleet configuration.
 
+        **Automated Workflow:**
+        - Upon submission, the workflow will automatically check the [SimBrief database](https://www.simbrief.com/api/inputs.airframes.json)
+        - If aircraft exists: weights will be validated automatically (warns if >5% difference)
+        - If NOT found: you'll be notified that a custom SimBrief profile is needed
+
         **Important:** All weights must be validated against official sources (Airport Planning Manuals, Type Certificates, or manufacturer specifications).
 
   - type: input

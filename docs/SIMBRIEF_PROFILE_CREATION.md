@@ -2,13 +2,31 @@
 
 This guide explains how to create custom SimBrief aircraft profiles for aircraft not in the standard SimBrief database.
 
+## Automated SimBrief Validation
+
+**NEW**: The aircraft addition workflow automatically checks the SimBrief database!
+
+When you submit an aircraft request via GitHub issue:
+1. Workflow fetches https://www.simbrief.com/api/inputs.airframes.json
+2. If aircraft exists: weights (MTOW, OEW, MZFW, Payload) are extracted and validated
+3. If not found: PR will indicate custom profile is needed
+4. Weight warnings: If provided weights differ >5% from SimBrief, workflow warns you
+
+**Benefits**:
+- Instant validation against official SimBrief data
+- Reduces manual weight verification for standard aircraft
+- Identifies which aircraft need custom profiles
+- Ensures consistency with flight planning tools
+
 ## When Custom Profiles Are Needed
 
 Custom SimBrief profiles are required when:
-1. Aircraft is not in the SimBrief database (check https://www.simbrief.com/api/inputs.airframes.json)
+1. Aircraft is NOT in the SimBrief database (workflow will indicate this)
 2. Using custom freighter conversions
 3. Using heavily modified aircraft variants
 4. Specific airline configurations differ significantly from standard profiles
+
+**To check manually**: Visit https://www.simbrief.com/api/inputs.airframes.json and search for your aircraft ICAO code.
 
 ## Current Aircraft Requiring Custom Profiles
 

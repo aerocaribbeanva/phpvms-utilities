@@ -98,20 +98,28 @@ The repository includes an automated workflow that processes aircraft requests f
    - Range is numeric
    - Flight type is valid
    - Weight validation: OEW + Payload ≤ MTOW
-4. Workflow checks if aircraft already exists in `aircraft_config.json`
-5. If valid and new:
+4. **Workflow checks SimBrief database** (NEW):
+   - Fetches https://www.simbrief.com/api/inputs.airframes.json
+   - If aircraft exists: extracts MTOW, OEW, MZFW, and Max Payload
+   - Validates provided weights against SimBrief (warns if >5% difference)
+   - If not found: flags that custom SimBrief profile is needed
+5. Workflow checks if aircraft already exists in `aircraft_config.json`
+6. If valid and new:
    - Creates feature branch: `feat/add-aircraft-{ICAO}-{issue-number}`
    - Adds aircraft to `aircraft_config.json` (alphabetically sorted)
-   - Commits changes with detailed specifications
-   - Creates Pull Request with validation summary
-   - Comments on original issue with PR link
+   - Commits changes with detailed specifications and SimBrief validation
+   - Creates Pull Request with validation summary including SimBrief data
+   - Comments on original issue with PR link and SimBrief status
 
 **Administrator Actions:**
 1. Review the automatically created PR
-2. Verify specifications are correct
-3. Check SimBrief profile is created/linked
-4. Merge PR to activate aircraft in all routes
-5. Merging triggers automatic regeneration of legacy routes
+2. Check SimBrief validation results in PR:
+   - ✅ If found in SimBrief: weights are validated automatically
+   - ⚠️ If NOT found: custom SimBrief profile must be created
+3. Verify any weight difference warnings (>5% from SimBrief)
+4. Verify specifications are correct
+5. Merge PR to activate aircraft in all routes
+6. Merging triggers automatic regeneration of legacy routes
 
 **Workflow File**: `.github/workflows/add-aircraft-from-issue.yml`
 
