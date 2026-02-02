@@ -1,0 +1,152 @@
+name: Generate Legacy Routes on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'flights-generator/_LEGACY/**/routes.csv'
+      - 'aircraft_config.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run_and_commit:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    environment: flight-gen
+
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Detect changed legacy routes and regenerate schedules
+        env:
+          AIRPORT_GAP_TOKEN: ${{ secrets.AIRPORT_GAP_TOKEN }}
+          AIRPORT_DB_TOKEN: ${{ secrets.AIRPORT_DB_TOKEN }}
+          PHPVMSV7_ENDPOINT: ${{ secrets.PHPVMSV7_ENDPOINT }}
+          PHPVMSV7_API_KEY: ${{ secrets.PHPVMSV7_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Base repo:  ${{ github.event.pull_request.base.repo.full_name }}"
+          echo "Base ref:   ${{ github.event.pull_request.base.ref }}"
+          echo "Base SHA:   ${{ github.event.pull_request.base.sha }}"
+          echo "Head repo:  ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Head ref:   ${{ github.event.pull_request.head.ref }}"
+          echo "Head SHA:   ${{ github.event.pull_request.head.sha }}"
+
+          # Add remote for the BASE repo and fetch the exact BASE commit
+          git remote add base "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.base.repo.full_name }}" || true
+          git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.sha }}:refs/remotes/base/pr_base || {
+            echo "Exact base SHA fetch failed; fetching base ref instead..."
+            git fetch --no-tags --depth=1 base ${{ github.event.pull_request.base.ref }}:refs/remotes/base/pr_base
+          }
+
+          echo "Base tip:"
+          git log --oneline -1 base/pr_base || true
+          echo "PR head tip:"
+          git log --oneline -1 HEAD || true
+
+          # Prefer three-dot diff; fall back to two-dot if histories are unrelated
+          if git merge-base --is-ancestor base/pr_base HEAD 2>/dev/null || git merge-base base/pr_base HEAD >/dev/null 2>&1; then
+            echo "Using three-dot diff (base/pr_base...HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base...HEAD || true)"
+          else
+            echo "No merge base; using two-dot diff (base/pr_base..HEAD)"
+            CHANGED="$(git diff --name-only --diff-filter=ACMRT base/pr_base..HEAD || true)"
+          fi
+
+          printf '%s\n' "$CHANGED" | sed 's/^/changed: /'
+
+          # Check if aircraft_config.json changed
+          AIRCRAFT_CONFIG_CHANGED=false
+          if echo "$CHANGED" | grep -q "^aircraft_config.json$"; then
+            echo "🔄 aircraft_config.json changed - will regenerate ALL legacy routes"
+            AIRCRAFT_CONFIG_CHANGED=true
+          fi
+
+          # Collect legacy route identifiers
+          declare -A legacy_routes=()
+
+          if [ "$AIRCRAFT_CONFIG_CHANGED" = true ]; then
+            # If aircraft_config changed, regenerate ALL legacy routes
+            for route_dir in flights-generator/_LEGACY/*/; do
+              if [[ -d "$route_dir" && -f "${route_dir}routes.csv" ]]; then
+                route_id=$(basename "$route_dir")
+                legacy_routes["$route_id"]=1
+                echo "  Will regenerate: $route_id (aircraft_config changed)"
+              fi
+            done
+          else
+            # Only regenerate routes with changed routes.csv
+            while IFS= read -r f; do
+              [[ -z "${f:-}" ]] && continue
+              if [[ "$f" =~ ^flights-generator/_LEGACY/([^/]+)/routes\.csv$ ]]; then
+                route_id="${BASH_REMATCH[1]}"
+                if [[ -f "flights-generator/_LEGACY/${route_id}/routes.csv" ]]; then
+                  legacy_routes["$route_id"]=1
+                fi
+              fi
+            done <<< "$CHANGED"
+          fi
+
+          if [ ${#legacy_routes[@]} -eq 0 ]; then
+            echo "No legacy route changes detected."
+            exit 0
+          fi
+
+          echo "Legacy routes to regenerate:"
+          for route_id in "${!legacy_routes[@]}"; do
+            echo "  - $route_id"
+          done
+
+          pushd flights-generator >/dev/null
+          for route_id in "${!legacy_routes[@]}"; do
+            if [[ -f "_LEGACY/${route_id}/routes.csv" ]]; then
+              echo "Regenerating schedules for LEGACY $route_id..."
+              python generate_flights.py LEGACY "$route_id" --yes
+            else
+              echo "Skipping $route_id (missing routes.csv)"
+            fi
+          done
+          popd >/dev/null
+
+      - name: Show git status (debug)
+        run: |
+          git status
+          echo "---- DIFF (unstaged) ----"
+          git diff -- . || true
+
+      - name: Commit and push changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          echo "About to commit:"
+          git diff --cached --name-only
+          git commit -m "Automated legacy routes regeneration from workflow"
+          git push
