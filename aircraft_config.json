@@ -103,6 +103,22 @@
       ]
     }
   },
+  "A339": {
+    "range": "7200",
+    "airlines": {
+      "CRN": [
+        "J"
+      ]
+    }
+  },
+  "A339F": {
+    "range": "4200",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    }
+  },
   "A346": {
     "range": "7900",
     "airlines": {
@@ -260,6 +276,14 @@
     "airlines": {
       "CRN": [
         "J"
+      ]
+    }
+  },
+  "B733F": {
+    "range": "2400",
+    "airlines": {
+      "CRN": [
+        "F"
       ]
     }
   },

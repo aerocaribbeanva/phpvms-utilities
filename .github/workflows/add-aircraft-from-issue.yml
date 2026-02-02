@@ -1,0 +1,535 @@
+name: Add Aircraft from Issue
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  add-aircraft:
+    if: contains(github.event.issue.labels.*.name, 'aircraft')
+    runs-on: ubuntu-latest
+    environment: flight-gen
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Parse issue body
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = context.payload.issue.body;
+
+            // Parse YAML-style issue body
+            const parseField = (fieldName) => {
+              const regex = new RegExp(`### ${fieldName}\\s*\\n\\s*(.+?)(?=\\n###|\\n\\n###|$)`, 's');
+              const match = issueBody.match(regex);
+              return match ? match[1].trim() : '';
+            };
+
+            const icao = parseField('Aircraft ICAO Code');
+            const name = parseField('Aircraft Full Name');
+            const type = parseField('Aircraft Type');
+            const range = parseField('Range \\(Nautical Miles\\)');
+            const mtow = parseField('MTOW - Maximum Takeoff Weight \\(lbs\\)');
+            const oew = parseField('OEW - Operating Empty Weight \\(lbs\\)');
+            const maxPayload = parseField('Maximum Payload \\(lbs\\)');
+            const simbriefProfile = parseField('SimBrief Profile');
+            const simbriefUrl = parseField('SimBrief Profile URL');
+            const sourceUrl = parseField('Weight Validation Source');
+
+            // Determine flight type code
+            let flightType = '';
+            if (type.includes('Passenger')) {
+              flightType = 'J';
+            } else if (type.includes('Freighter')) {
+              flightType = 'F';
+            } else if (type.includes('Both') || type.includes('Combi')) {
+              flightType = 'J,F';
+            }
+
+            // Validation
+            const errors = [];
+            if (!icao || icao.length < 3 || icao.length > 4) {
+              errors.push('Invalid ICAO code (must be 3-4 characters)');
+            }
+            if (!range || isNaN(parseInt(range))) {
+              errors.push('Invalid range (must be a number)');
+            }
+            if (!flightType) {
+              errors.push('Could not determine flight type from selection');
+            }
+
+            // Weight validation
+            const mtowNum = parseInt(mtow?.replace(/[^0-9]/g, '') || '0');
+            const oewNum = parseInt(oew?.replace(/[^0-9]/g, '') || '0');
+            const payloadNum = parseInt(maxPayload?.replace(/[^0-9]/g, '') || '0');
+
+            if (oewNum + payloadNum > mtowNum) {
+              errors.push(`Weight validation failed: OEW (${oewNum}) + Payload (${payloadNum}) = ${oewNum + payloadNum} exceeds MTOW (${mtowNum})`);
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join('; '));
+              return { valid: false, errors };
+            }
+
+            core.setOutput('icao', icao.toUpperCase());
+            core.setOutput('name', name);
+            core.setOutput('type', type);
+            core.setOutput('range', range);
+            core.setOutput('flight_type', flightType);
+            core.setOutput('mtow', mtow);
+            core.setOutput('oew', oew);
+            core.setOutput('max_payload', maxPayload);
+            core.setOutput('simbrief_profile', simbriefProfile);
+            core.setOutput('simbrief_url', simbriefUrl || 'None provided');
+            core.setOutput('source_url', sourceUrl);
+            core.setOutput('issue_number', context.payload.issue.number);
+
+            return {
+              valid: true,
+              icao: icao.toUpperCase(),
+              name,
+              range,
+              flightType
+            };
+
+      - name: Fetch SimBrief aircraft data
+        id: simbrief
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const icao = '${{ steps.parse.outputs.icao }}';
+
+            let oew = 0, mtow = 0, mzfw = 0, maxPayload = 0;
+            let found = false;
+            let source = '';
+
+            // First, check local aircraft_data file (find latest version)
+            const { execSync } = require('child_process');
+            let localDataPath = null;
+
+            try {
+              // Find the latest aircraft_data_*.json file
+              const findCmd = 'ls -t phpvms7-fares/aircraft_data_*.json 2>/dev/null | head -1';
+              localDataPath = execSync(findCmd, { encoding: 'utf8' }).trim();
+            } catch (e) {
+              console.log('No local aircraft_data file found');
+            }
+
+            if (localDataPath && fs.existsSync(localDataPath)) {
+              console.log(`Checking local aircraft_data file: ${localDataPath}`);
+              const localData = JSON.parse(fs.readFileSync(localDataPath, 'utf8'));
+
+              if (localData[icao]) {
+                console.log(`Found ${icao} in local aircraft_data file`);
+                found = true;
+                source = 'local';
+
+                // Extract weights from local file
+                oew = localData[icao].oei_lbs || 0;  // Operating Empty Weight
+                mzfw = localData[icao].mzfw_lbs || 0; // Max Zero Fuel Weight
+                maxPayload = mzfw - oew; // Calculate payload
+
+                console.log(`Local data for ${icao}:`);
+                console.log(`  OEW (oei_lbs): ${oew} lbs`);
+                console.log(`  MZFW: ${mzfw} lbs`);
+                console.log(`  Max Payload: ${maxPayload} lbs`);
+                console.log(`  Note: MTOW not in local file, will check API`);
+              }
+            }
+
+            // If not found locally or need MTOW, check SimBrief API
+            if (!found || mtow === 0) {
+              console.log(found ? 'Fetching MTOW from SimBrief API...' : 'Checking SimBrief API...');
+              const response = await fetch('https://www.simbrief.com/api/inputs.airframes.json');
+              const airframes = await response.json();
+
+              // Check if aircraft exists in SimBrief database
+              const simbriefData = airframes[icao];
+
+              if (simbriefData) {
+                console.log(`Found ${icao} in SimBrief API`);
+                found = true;
+                if (!source) source = 'api';
+
+                // Extract weights from first airframe variant
+                const firstVariant = simbriefData.airframes && simbriefData.airframes[0];
+
+                if (firstVariant) {
+                  // If we got data from local file, only update MTOW from API
+                  if (source === 'local') {
+                    mtow = firstVariant.mtow || 0;
+                    console.log(`  MTOW from API: ${mtow} lbs`);
+                    source = 'local+api';
+                  } else {
+                    // Get all weights from API
+                    oew = firstVariant.oew || 0;
+                    mzfw = firstVariant.mzfw || 0;
+                    mtow = firstVariant.mtow || 0;
+                    maxPayload = mzfw - oew;
+
+                    console.log(`SimBrief API weights for ${icao}:`);
+                    console.log(`  OEW: ${oew} lbs`);
+                    console.log(`  MTOW: ${mtow} lbs`);
+                    console.log(`  MZFW: ${mzfw} lbs`);
+                    console.log(`  Max Payload: ${maxPayload} lbs`);
+                  }
+                } else {
+                  console.log(`${icao} found in SimBrief API but no airframe variants available`);
+                  if (source !== 'local') {
+                    found = false;
+                  }
+                }
+              } else {
+                console.log(`${icao} NOT found in SimBrief API`);
+                if (source !== 'local') {
+                  found = false;
+                }
+              }
+            }
+
+            // Output final results
+            if (found) {
+              console.log(`\nFinal weights for ${icao} (source: ${source}):`);
+              console.log(`  OEW: ${oew} lbs`);
+              console.log(`  MTOW: ${mtow} lbs`);
+              console.log(`  MZFW: ${mzfw} lbs`);
+              console.log(`  Max Payload: ${maxPayload} lbs`);
+
+              core.setOutput('found', 'true');
+              core.setOutput('source', source);
+              core.setOutput('simbrief_oew', oew.toString());
+              core.setOutput('simbrief_mtow', mtow.toString());
+              core.setOutput('simbrief_mzfw', mzfw.toString());
+              core.setOutput('simbrief_payload', maxPayload.toString());
+
+              // Validate provided weights against SimBrief
+              const providedOew = parseInt('${{ steps.parse.outputs.oew }}'.replace(/[^0-9]/g, '') || '0');
+              const providedMtow = parseInt('${{ steps.parse.outputs.mtow }}'.replace(/[^0-9]/g, '') || '0');
+
+              const warnings = [];
+              if (providedOew && oew && Math.abs(providedOew - oew) / oew > 0.05) {
+                warnings.push(`⚠️ Provided OEW (${providedOew} lbs) differs from SimBrief (${oew} lbs) by more than 5%`);
+              }
+              if (providedMtow && mtow && Math.abs(providedMtow - mtow) / mtow > 0.05) {
+                warnings.push(`⚠️ Provided MTOW (${providedMtow} lbs) differs from SimBrief (${mtow} lbs) by more than 5%`);
+              }
+
+              if (warnings.length > 0) {
+                core.setOutput('warnings', warnings.join('\n'));
+                console.log('Warnings:', warnings.join('\n'));
+              }
+            } else {
+              console.log(`\n${icao} NOT found in local data or SimBrief API`);
+              console.log('Custom SimBrief profile will be needed');
+              core.setOutput('found', 'false');
+              core.setOutput('source', 'none');
+            }
+
+      - name: Check if aircraft already exists
+        id: check_exists
+        run: |
+          ICAO="${{ steps.parse.outputs.icao }}"
+          if grep -q "\"$ICAO\":" aircraft_config.json; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Aircraft $ICAO already exists in aircraft_config.json"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Aircraft $ICAO does not exist, proceeding with addition"
+          fi
+
+      - name: Comment if aircraft exists
+        if: steps.check_exists.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `⚠️ Aircraft **${{ steps.parse.outputs.icao }}** already exists in \`aircraft_config.json\`.\n\nPlease check the existing configuration or close this issue if it's a duplicate.`
+            });
+            core.setFailed('Aircraft already exists');
+
+      - name: Create branch for aircraft addition
+        if: steps.check_exists.outputs.exists == 'false'
+        id: branch
+        run: |
+          ICAO="${{ steps.parse.outputs.icao }}"
+          BRANCH="feat/add-aircraft-${ICAO}-${{ steps.parse.outputs.issue_number }}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        if: steps.check_exists.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Add aircraft to aircraft_config.json
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import json
+          import sys
+
+          icao = "${{ steps.parse.outputs.icao }}"
+          range_nm = "${{ steps.parse.outputs.range }}"
+          flight_types_str = "${{ steps.parse.outputs.flight_type }}"
+
+          # Parse flight types
+          flight_types = [ft.strip() for ft in flight_types_str.split(',')]
+
+          # Load existing config
+          with open('aircraft_config.json', 'r', encoding='utf-8') as f:
+              config = json.load(f)
+
+          # Check if already exists (double-check)
+          if icao in config:
+              print(f"Aircraft {icao} already exists!")
+              sys.exit(1)
+
+          # Find insertion point (alphabetically)
+          keys = list(config.keys())
+          insert_index = 0
+          for i, key in enumerate(keys):
+              if key < icao:
+                  insert_index = i + 1
+              else:
+                  break
+
+          # Create new aircraft entry
+          new_entry = {
+              icao: {
+                  "range": range_nm,
+                  "airlines": {
+                      "CRN": flight_types
+                  }
+              }
+          }
+
+          # Insert at correct position
+          items = list(config.items())
+          items.insert(insert_index, (icao, new_entry[icao]))
+          config = dict(items)
+
+          # Write back to file
+          with open('aircraft_config.json', 'w', encoding='utf-8') as f:
+              json.dump(config, f, indent=2, ensure_ascii=False)
+              f.write('\n')  # Add trailing newline
+
+          print(f"Added {icao} at position {insert_index}")
+          PYTHON_SCRIPT
+
+      - name: Create validation summary
+        if: steps.check_exists.outputs.exists == 'false'
+        id: summary
+        run: |
+          cat > validation_summary.md << 'EOF'
+          ## Aircraft Addition Summary
+
+          **Aircraft**: ${{ steps.parse.outputs.name }} (${{ steps.parse.outputs.icao }})
+          **Type**: ${{ steps.parse.outputs.type }}
+          **Range**: ${{ steps.parse.outputs.range }} NM
+          **Flight Types**: ${{ steps.parse.outputs.flight_type }}
+
+          ### Weight Specifications
+          - **MTOW**: ${{ steps.parse.outputs.mtow }}
+          - **OEW**: ${{ steps.parse.outputs.oew }}
+          - **Max Payload**: ${{ steps.parse.outputs.max_payload }}
+
+          ### SimBrief Database Check
+          EOF
+
+          if [ "${{ steps.simbrief.outputs.found }}" == "true" ]; then
+            cat >> validation_summary.md << 'EOF'
+          ✅ **Aircraft found in SimBrief database**
+
+          **Data Source**: ${{ steps.simbrief.outputs.source }}
+          EOF
+            if [ "${{ steps.simbrief.outputs.source }}" == "local" ]; then
+              echo "  - Local aircraft_data file (phpvms7-fares/)" >> validation_summary.md
+            elif [ "${{ steps.simbrief.outputs.source }}" == "api" ]; then
+              echo "  - SimBrief API (https://www.simbrief.com/api/inputs.airframes.json)" >> validation_summary.md
+            elif [ "${{ steps.simbrief.outputs.source }}" == "local+api" ]; then
+              echo "  - Local aircraft_data file + SimBrief API (MTOW)" >> validation_summary.md
+            fi
+            cat >> validation_summary.md << 'EOF'
+
+          **SimBrief Weights:**
+          - **MTOW**: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs
+          - **OEW**: ${{ steps.simbrief.outputs.simbrief_oew }} lbs
+          - **MZFW**: ${{ steps.simbrief.outputs.simbrief_mzfw }} lbs
+          - **Max Payload**: ${{ steps.simbrief.outputs.simbrief_payload }} lbs
+
+          EOF
+            if [ -n "${{ steps.simbrief.outputs.warnings }}" ]; then
+              cat >> validation_summary.md << 'EOF'
+          **Weight Comparison Warnings:**
+          ${{ steps.simbrief.outputs.warnings }}
+
+          EOF
+            fi
+            cat >> validation_summary.md << 'EOF'
+          Standard SimBrief profile exists - no custom profile needed.
+          EOF
+          else
+            cat >> validation_summary.md << 'EOF'
+          ⚠️ **Aircraft NOT found in SimBrief database**
+
+          A custom SimBrief airframe profile will need to be created.
+          - **Profile Status**: ${{ steps.parse.outputs.simbrief_profile }}
+          - **Profile URL**: ${{ steps.parse.outputs.simbrief_url }}
+
+          See `docs/SIMBRIEF_PROFILE_CREATION.md` for instructions.
+          EOF
+          fi
+
+          cat >> validation_summary.md << 'EOF'
+
+          ### Source
+          - **Validation Source**: ${{ steps.parse.outputs.source_url }}
+
+          ### Changes Made
+          - Added `${{ steps.parse.outputs.icao }}` to `aircraft_config.json`
+          - This will trigger automatic regeneration of all legacy routes
+
+          ### Next Steps
+          1. Review the changes in this PR
+          2. Verify weight specifications are correct
+          3. Create/verify SimBrief custom profile if needed
+          4. Merge to trigger legacy route regeneration
+
+          ---
+          Closes #${{ steps.parse.outputs.issue_number }}
+          EOF
+
+          echo "summary_created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit changes
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add aircraft_config.json
+
+          # Build commit message with conditional SimBrief info
+          COMMIT_MSG="Add ${{ steps.parse.outputs.icao }} (${{ steps.parse.outputs.name }}) to fleet
+
+          Aircraft: ${{ steps.parse.outputs.name }}
+          ICAO: ${{ steps.parse.outputs.icao }}
+          Type: ${{ steps.parse.outputs.type }}
+          Range: ${{ steps.parse.outputs.range }} NM
+          Flight Types: ${{ steps.parse.outputs.flight_type }}
+
+          Weight Specifications:
+          - MTOW: ${{ steps.parse.outputs.mtow }}
+          - OEW: ${{ steps.parse.outputs.oew }}
+          - Max Payload: ${{ steps.parse.outputs.max_payload }}"
+
+          if [ "${{ steps.simbrief.outputs.found }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG
+
+          SimBrief Validation:
+          ✅ Aircraft found in SimBrief database (source: ${{ steps.simbrief.outputs.source }})
+          - SimBrief MTOW: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs
+          - SimBrief OEW: ${{ steps.simbrief.outputs.simbrief_oew }} lbs
+          - SimBrief Payload: ${{ steps.simbrief.outputs.simbrief_payload }} lbs"
+          else
+            COMMIT_MSG="$COMMIT_MSG
+
+          SimBrief Validation:
+          ⚠️ Aircraft NOT in SimBrief database - custom profile needed
+          Profile Status: ${{ steps.parse.outputs.simbrief_profile }}
+          Profile URL: ${{ steps.parse.outputs.simbrief_url }}"
+          fi
+
+          COMMIT_MSG="$COMMIT_MSG
+
+          Source: ${{ steps.parse.outputs.source_url }}
+
+          Closes #${{ steps.parse.outputs.issue_number }}"
+
+          git commit -m "$COMMIT_MSG"
+
+      - name: Push branch
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          git push -u origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Create Pull Request
+        if: steps.check_exists.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('validation_summary.md', 'utf8');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Add aircraft: ${{ steps.parse.outputs.icao }} - ${{ steps.parse.outputs.name }}`,
+              head: "${{ steps.branch.outputs.branch }}",
+              base: "main",
+              body: summary
+            });
+
+            // Add comment to original issue with SimBrief info
+            let comment = `✅ Pull request created: #${pr.data.number}\n\nThe aircraft has been added to \`aircraft_config.json\`.`;
+
+            if ('${{ steps.simbrief.outputs.found }}' === 'true') {
+              comment += '\n\n**SimBrief Validation:** ✅ Aircraft found in SimBrief database';
+              comment += '\n- **Data Source**: ${{ steps.simbrief.outputs.source }}';
+              comment += '\n- MTOW: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs';
+              comment += '\n- OEW: ${{ steps.simbrief.outputs.simbrief_oew }} lbs';
+              comment += '\n- Max Payload: ${{ steps.simbrief.outputs.simbrief_payload }} lbs';
+
+              if ('${{ steps.simbrief.outputs.warnings }}') {
+                comment += '\n\n${{ steps.simbrief.outputs.warnings }}';
+              }
+            } else {
+              comment += '\n\n**SimBrief Validation:** ⚠️ Aircraft NOT found in SimBrief database';
+              comment += '\n- A custom SimBrief airframe profile will need to be created';
+              comment += '\n- See `docs/SIMBRIEF_PROFILE_CREATION.md` for instructions';
+            }
+
+            comment += '\n\nPlease review and merge the PR to activate the aircraft in all routes.';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: comment
+            });
+
+            // Add labels to PR
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['aircraft', 'automated']
+            });
+
+      - name: Handle errors
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `❌ Failed to process aircraft addition.\n\nPlease check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
+            });
