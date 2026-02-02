@@ -140,12 +140,15 @@ jobs:
                 // Extract weights from local file
                 oew = localData[icao].oei_lbs || 0;  // Operating Empty Weight
                 mzfw = localData[icao].mzfw_lbs || 0; // Max Zero Fuel Weight
-                maxPayload = mzfw - oew; // Calculate payload
+                const pax = localData[icao].default_pax || 0;
+                // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
+                maxPayload = Math.max(0, mzfw - oew - (pax * 175));
 
                 console.log(`Local data for ${icao}:`);
                 console.log(`  OEW (oei_lbs): ${oew} lbs`);
                 console.log(`  MZFW: ${mzfw} lbs`);
-                console.log(`  Max Payload: ${maxPayload} lbs`);
+                console.log(`  Default Pax: ${pax}`);
+                console.log(`  Max Payload: ${maxPayload} lbs (MZFW - OEW - pax*175)`);
                 console.log(`  Note: MTOW not in local file, will check API`);
               }
             }
@@ -178,13 +181,16 @@ jobs:
                     oew = firstVariant.oew || 0;
                     mzfw = firstVariant.mzfw || 0;
                     mtow = firstVariant.mtow || 0;
-                    maxPayload = mzfw - oew;
+                    const apiPax = parseInt(firstVariant.airframe_options?.maxpax || 0);
+                    // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
+                    maxPayload = Math.max(0, mzfw - oew - (apiPax * 175));
 
                     console.log(`SimBrief API weights for ${icao}:`);
                     console.log(`  OEW: ${oew} lbs`);
                     console.log(`  MTOW: ${mtow} lbs`);
                     console.log(`  MZFW: ${mzfw} lbs`);
-                    console.log(`  Max Payload: ${maxPayload} lbs`);
+                    console.log(`  Pax: ${apiPax}`);
+                    console.log(`  Max Payload: ${maxPayload} lbs (MZFW - OEW - pax*175)`);
                   }
                 } else {
                   console.log(`${icao} found in SimBrief API but no airframe variants available`);
@@ -311,18 +317,75 @@ jobs:
                   break
 
           # Create new aircraft entry
-          new_entry = {
-              icao: {
-                  "range": range_nm,
-                  "airlines": {
-                      "CRN": flight_types
-                  }
+          aircraft_entry = {
+              "range": range_nm,
+              "airlines": {
+                  "CRN": flight_types
               }
           }
 
+          # If a custom SimBrief profile URL is provided, add simbrief section
+          simbrief_url = "${{ steps.parse.outputs.simbrief_url }}".strip()
+          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
+          aircraft_name = "${{ steps.parse.outputs.name }}"
+          aircraft_type = "${{ steps.parse.outputs.type }}"
+
+          # Weights from issue (strip non-numeric except decimal)
+          import re
+          def parse_weight(val):
+              nums = re.sub(r'[^0-9.]', '', val or '0')
+              return float(nums) if nums else 0.0
+
+          oew_lbs = parse_weight("${{ steps.parse.outputs.oew }}")
+          mtow_lbs = parse_weight("${{ steps.parse.outputs.mtow }}")
+          max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
+
+          # MZFW = OEW + Max Payload (structural limit)
+          mzfw_lbs = oew_lbs + max_payload_lbs
+
+          is_freighter = "Freighter" in aircraft_type and "Passenger" not in aircraft_type
+
+          # Calculate default_pax: if passenger, derive from MZFW and OEW
+          # Formula: pax = (MZFW - OEW - cargo_reserve) / 175
+          # For simplicity: if freighter, pax = 0; if passenger, use max_payload / 175
+          PASSENGER_WEIGHT_LBS = 175
+          if is_freighter:
+              default_pax = 0
+          else:
+              default_pax = int(max_payload_lbs / PASSENGER_WEIGHT_LBS)
+
+          # Only add simbrief section if custom profile URL is provided and not in standard SimBrief
+          if simbrief_url and simbrief_url != "None provided" and not simbrief_found:
+              # Parse airframe_internal_id from URL (last path segment)
+              # URL format: https://dispatch.simbrief.com/airframes/share/XXXXXX_YYYYYYYYYYYY
+              airframe_id = simbrief_url.rstrip('/').split('/')[-1]
+
+              # Build seat layout: freighters get 0 across, passengers get all Y
+              if is_freighter:
+                  seats = {"F": 0, "J": 0, "Y": 0}
+              else:
+                  seats = {"F": 0, "J": 0, "Y": default_pax}
+
+              aircraft_entry["simbrief"] = {
+                  "profile_url": simbrief_url,
+                  "airframe_internal_id": airframe_id,
+                  "aircraft_name": aircraft_name,
+                  "base_type": "",
+                  "default_pax": default_pax,
+                  "mzfw_lbs": mzfw_lbs,
+                  "oei_lbs": oew_lbs,
+                  "is_freighter": is_freighter,
+                  **seats
+              }
+              print(f"Added simbrief profile for {icao} (custom profile: {airframe_id})")
+          elif simbrief_found:
+              print(f"Aircraft {icao} is in standard SimBrief database, no custom profile needed")
+          else:
+              print(f"No SimBrief profile URL provided for {icao}")
+
           # Insert at correct position
           items = list(config.items())
-          items.insert(insert_index, (icao, new_entry[icao]))
+          items.insert(insert_index, (icao, aircraft_entry))
           config = dict(items)
 
           # Write back to file
