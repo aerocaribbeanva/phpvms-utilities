@@ -7,13 +7,18 @@ This guide explains how to create custom SimBrief aircraft profiles for aircraft
 **NEW**: The aircraft addition workflow automatically checks the SimBrief database!
 
 When you submit an aircraft request via GitHub issue:
-1. Workflow fetches https://www.simbrief.com/api/inputs.airframes.json
-2. If aircraft exists: weights (MTOW, OEW, MZFW, Payload) are extracted and validated
-3. If not found: PR will indicate custom profile is needed
-4. Weight warnings: If provided weights differ >5% from SimBrief, workflow warns you
+1. **First**: Workflow checks local `phpvms7-fares/aircraft_data_*.json` file (latest version)
+2. **If found locally**: Extracts OEW, MZFW, Max Payload from local file
+3. **Then**: Fetches https://www.simbrief.com/api/inputs.airframes.json for MTOW (if needed)
+4. **If not found locally**: Checks SimBrief API for all weights
+5. Validates provided weights against SimBrief data (warns if >5% difference)
+6. If not found anywhere: PR indicates custom profile is needed
+7. **Data source tracked**: Shows whether data came from `local`, `api`, or `local+api`
 
 **Benefits**:
 - Instant validation against official SimBrief data
+- Prioritizes local aircraft data file (faster, includes custom aircraft)
+- Falls back to SimBrief API for additional data or missing aircraft
 - Reduces manual weight verification for standard aircraft
 - Identifies which aircraft need custom profiles
 - Ensures consistency with flight planning tools

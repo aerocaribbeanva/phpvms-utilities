@@ -99,10 +99,13 @@ The repository includes an automated workflow that processes aircraft requests f
    - Flight type is valid
    - Weight validation: OEW + Payload ≤ MTOW
 4. **Workflow checks SimBrief database** (NEW):
-   - Fetches https://www.simbrief.com/api/inputs.airframes.json
-   - If aircraft exists: extracts MTOW, OEW, MZFW, and Max Payload
-   - Validates provided weights against SimBrief (warns if >5% difference)
-   - If not found: flags that custom SimBrief profile is needed
+   - **First**: Checks local `phpvms7-fares/aircraft_data_*.json` file (automatically finds latest version)
+   - **If found locally**: Extracts OEW, MZFW, and Max Payload from local file
+   - **Then**: Fetches https://www.simbrief.com/api/inputs.airframes.json for MTOW (if needed)
+   - **If not found locally**: Checks SimBrief API for all weights
+   - Validates provided weights against SimBrief data (warns if >5% difference)
+   - If not found anywhere: flags that custom SimBrief profile is needed
+   - **Data sources tracked**: `local`, `api`, or `local+api` (shown in PR)
 5. Workflow checks if aircraft already exists in `aircraft_config.json`
 6. If valid and new:
    - Creates feature branch: `feat/add-aircraft-{ICAO}-{issue-number}`
