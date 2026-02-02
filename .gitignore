@@ -181,3 +181,11 @@ cython_debug/
 
 # Claude Code documentation
 CLAUDE.md
+
+# Flight generator: ignore timestamped output directories
+flights-generator/_LEGACY/**/20*/
+
+# Flight generator: KEEP the split files for git
+# Note: ROUTES_IMPORT_FILES_SPLITTED is explicitly NOT ignored
+!flights-generator/_LEGACY/**/ROUTES_IMPORT_FILES_SPLITTED/
+!flights-generator/_LEGACY/**/ROUTES_IMPORT_FILES_SPLITTED/*.csv

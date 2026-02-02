@@ -938,20 +938,162 @@ def cleanup_airports_db(json_file=AIRPORTS_JSON_FILE):
         except Exception as e:
             print(f"⚠️ Could not remove {json_file}: {e}")
 
+def process_legacy_routes(route_code, csv_input, time_generated):
+    """
+    Process existing v7 format routes CSV and update subfleets.
+
+    Args:
+        route_code: Legacy route identifier
+        csv_input: Path to the routes.csv file
+        time_generated: Timestamp for output directory
+    """
+    print(f"\n{'='*80}")
+    print(f"PROCESSING LEGACY ROUTES: {route_code}")
+    print(f"Input file: {csv_input}")
+    print(f"{'='*80}\n")
+
+    # Read the existing CSV
+    with open(csv_input, 'r', newline='', encoding='utf-8') as csvfile_in:
+        reader = csv.DictReader(csvfile_in)
+        rows = list(reader)
+        fieldnames = reader.fieldnames
+
+    print(f"📊 Read {len(rows)} flights from input file")
+
+    indexes_to_remove = []
+    for idx, row in enumerate(rows):
+        flight_number = int(remove_non_numeric(str(row['flight_number'])))
+
+        # Mark flights with flight_number < 100 for removal
+        if flight_number < 100:
+            indexes_to_remove.append(idx)
+            print(f"  ⚠️  Flight {flight_number} marked for deletion (< 100)")
+            continue
+
+        # Update callsign based on flight type
+        flight_type = row["flight_type"]
+        callsign = row["callsign"]
+        if flight_type == 'F':
+            if callsign != 'CRF':
+                row['callsign'] = 'CRF'
+        elif flight_type == 'J':
+            if callsign != '':
+                row['callsign'] = ''
+
+        # Recalculate flight_time if missing or invalid
+        flight_distance = int(row['distance'])
+        dpt_time = row["dpt_time"]
+        arr_time = row["arr_time"]
+        average_speed_knots = 300
+        avg_flight_time_min = (flight_distance / average_speed_knots) * 60
+
+        # Handle time formats
+        time_fmt = '%H:%M'
+        if arr_time.count(':') == 2:
+            arr_time = arr_time[:-3]  # Remove seconds
+        if dpt_time.count(':') == 2:
+            dpt_time = dpt_time[:-3]  # Remove seconds
+
+        dpt_time_datetime = datetime.strptime(dpt_time, time_fmt)
+
+        # Calculate or estimate arrival time
+        if arr_time == "":
+            arr_time_datetime = dpt_time_datetime + timedelta(minutes=avg_flight_time_min)
+            row['arr_time'] = arr_time_datetime.strftime(time_fmt)
+        else:
+            arr_time_datetime = datetime.strptime(arr_time, time_fmt)
+
+        # Calculate flight time
+        dpt_arr_time_delta_in_minutes = (arr_time_datetime - dpt_time_datetime).total_seconds() / 60
+        flight_time_in_minutes = abs(int(dpt_arr_time_delta_in_minutes))
+        flight_time = str(flight_time_in_minutes)
+        row["flight_time"] = flight_time
+
+        # Recalculate subfleets based on current aircraft_config.json
+        subfleets = []
+        for aircraft_icao in airline_subfleet_by_flight_type["CRN"][flight_type]:
+            if flight_distance < int(aircrafts_range_by_icao[aircraft_icao]):
+                subfleets.append(aircraft_icao)
+        row['subfleets'] = ';'.join(subfleets)
+
+    # Remove flights with flight_number < 100
+    print("\n🔍 Checking flights that need to be removed")
+    if len(indexes_to_remove) > 0:
+        print(f"  Total flights before removal: {len(rows)}")
+        for idx, i in enumerate(indexes_to_remove):
+            del rows[i - idx]
+        print(f"  ✅ Removed {len(indexes_to_remove)} flights with flight_number < 100")
+        print(f"  Total flights after removal: {len(rows)}")
+    else:
+        print("  ✅ No flights found that need to be removed")
+
+    # Create output directories
+    # Timestamped directory for full CSV (not committed)
+    output_dir_timestamped = f"_LEGACY/{route_code}/{time_generated}"
+    os.makedirs(output_dir_timestamped, exist_ok=True)
+
+    # ROUTES_IMPORT_FILES_SPLITTED directory for split files (committed to git)
+    output_dir_splitted = f"_LEGACY/{route_code}/ROUTES_IMPORT_FILES_SPLITTED"
+    os.makedirs(output_dir_splitted, exist_ok=True)
+
+    # Write updated CSV to timestamped directory (backup)
+    csv_output = f"{output_dir_timestamped}/exported-{time_generated}-routes.csv"
+    with open(csv_output, 'w', newline='', encoding='utf-8') as csvfile_out:
+        writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"\n✅ Updated CSV saved as {csv_output}")
+
+    # Always split into multiple files and save to ROUTES_IMPORT_FILES_SPLITTED
+    print(f"\n📦 Splitting {len(rows)} schedules into multiple files (500 flights per file)")
+    print(f"  Output directory: {output_dir_splitted}/")
+
+    # Create a temporary full CSV for splitting
+    temp_full_csv = f"{output_dir_splitted}/temp_full.csv"
+    with open(temp_full_csv, 'w', newline='', encoding='utf-8') as csvfile_out:
+        writer = csv.DictWriter(csvfile_out, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    # Split the file
+    with open(temp_full_csv, 'r') as file:
+        split(file, row_limit=500, output_path=output_dir_splitted)
+
+    # Remove temporary file
+    os.remove(temp_full_csv)
+
+    print(f"  ✅ Split files created in {output_dir_splitted}/")
+
+    print(f"\n{'='*80}")
+    print(f"✅ LEGACY ROUTES PROCESSING COMPLETE")
+    print(f"{'='*80}")
+    print(f"\n📁 Timestamped backup: {output_dir_timestamped}")
+    print(f"📁 Import files directory: {output_dir_splitted}")
+    print(f"📊 Total flights processed: {len(rows)}")
+    num_files = (len(rows) // 500) + (1 if len(rows) % 500 > 0 else 0)
+    print(f"📦 Split into {num_files} files (output_1.csv - output_{num_files}.csv)")
+    print(f"\n💡 Next steps:")
+    print(f"  1. Review the split files in {output_dir_splitted}/")
+    print(f"  2. Commit the ROUTES_IMPORT_FILES_SPLITTED directory to git")
+    print(f"  3. Import the CSV files into phpVMS v7")
+    print(f"\n📝 Note: The timestamped directory contains a backup and is ignored by git")
+    print(f"{'='*80}\n")
+
 def print_missing_airports_summary():
     missing_airports = load_missing_airports()
-    
+
     if not missing_airports:
         print("\n✅ All airports were found in VAcentral API!")
         return
-    
+
     print("\n" + "="*80)
     print("📋 AIRPORTS MISSING FROM VACENTRAL API - ACTION REQUIRED")
     print("="*80)
-    
+
     found_elsewhere = [a for a in missing_airports.values() if a['status'] == 'found']
     not_found_anywhere = [a for a in missing_airports.values() if a['status'] == 'not_found']
-    
+
     if found_elsewhere:
         print(f"\n🟡 Found in other sources ({len(found_elsewhere)} airports):")
         print("-"*80)
@@ -959,12 +1101,12 @@ def print_missing_airports_summary():
         for airport in sorted(found_elsewhere, key=lambda x: x['icao']):
             coords = (airport.get('latitude'), airport.get('longitude'))
             csv_line = generate_csv_line_for_missing_airport(
-                airport['icao'], 
-                coords, 
+                airport['icao'],
+                coords,
                 airport.get('found_in')
             )
             print(csv_line)
-    
+
     if not_found_anywhere:
         print(f"\n🔴 NOT FOUND ANYWHERE ({len(not_found_anywhere)} airports):")
         print("-"*80)
@@ -972,7 +1114,7 @@ def print_missing_airports_summary():
         for airport in sorted(not_found_anywhere, key=lambda x: x['icao']):
             csv_line = generate_csv_line_for_missing_airport(airport['icao'], None, None)
             print(csv_line)
-    
+
     print("\n" + "="*80)
     print("📝 NEXT STEPS:")
     print("1. Add the lines above to custom_airports.csv")
@@ -989,18 +1131,30 @@ if __name__ == "__main__":
     print(f"PHPVMSV7_ENDPOINT: {PHPVMSV7_ENDPOINT or 'NOT SET'}")
     print(f"PHPVMSV7_API_KEY: {PHPVMSV7_API_KEY[:10] + '...' + PHPVMSV7_API_KEY[-4:] if PHPVMSV7_API_KEY else 'NOT SET'}")
     print("="*80 + "\n")
-    
+
     parser = argparse.ArgumentParser(description="Generate phpVMS flights.")
-    parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA)")
-    parser.add_argument("route_code", help="Airport IATA (e.g., HAV)")
+    parser.add_argument("airport_icao", help="Base Airport ICAO (e.g., MUHA) or TOUR for tour mode or LEGACY for legacy import mode")
+    parser.add_argument("route_code", help="Airport IATA (e.g., HAV) or tour code or legacy identifier")
     parser.add_argument("--yes", "-y", action="store_true",help="Proceed without interactive confirmation")
     args = parser.parse_args()
     _assume_yes = args.yes
     AIRPORT_ICAO=args.airport_icao
     route_code=args.route_code
     is_tour_mode = AIRPORT_ICAO.upper() == "TOUR"
+    is_legacy_mode = AIRPORT_ICAO.upper() == "LEGACY"
     time_generated = time.strftime("%Y%m%d-%H%M%S")
-    if is_tour_mode:
+
+    if is_legacy_mode:
+        print("Legacy Import mode")
+        print(f"Processing legacy routes from _LEGACY/{route_code}")
+        os.makedirs(f"_LEGACY/{route_code}", exist_ok=True)
+        file_path = f"_LEGACY/{route_code}/routes.csv"
+        if not os.path.isfile(file_path):
+            print(f"❌ File not found: {file_path}")
+            print(f"Please create {file_path} with your existing v7 format schedules")
+            sys.exit(1)
+        process_legacy_routes(route_code, file_path, time_generated)
+    elif is_tour_mode:
         print("Tour mode")
         os.makedirs(f"TOURS/{route_code}", exist_ok=True)
         file_path = f"TOURS/{route_code}/legs.txt"
@@ -1021,5 +1175,6 @@ if __name__ == "__main__":
         update_subfleets(AIRPORT_ICAO,route_code,time_generated,f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
         os.remove(f"{AIRPORT_ICAO}_{route_code}_{time_generated}_generated_phpvms_flights.csv")
         cleanup_airports_db()
-    
-    print_missing_airports_summary()
+
+    if not is_legacy_mode:
+        print_missing_airports_summary()

@@ -8,7 +8,7 @@ on:
         type: choice
         required: false
         default: all
-        options: [all, tours, non_tours]
+        options: [all, tours, non_tours, legacy_routes]
       branch_suffix:
         description: "Optional suffix for the new branch name"
         type: string
@@ -125,10 +125,29 @@ jobs:
             fi
           }
 
+          gen_legacy() {
+            echo "==> Scanning legacy routes (flights-generator/_LEGACY/*/routes.csv)"
+            shopt -s nullglob
+            found=0
+            for d in flights-generator/_LEGACY/*; do
+              [ -d "$d" ] || continue
+              route_id="$(basename "$d")"
+              if [[ -f "$d/routes.csv" ]]; then
+                echo "Regenerating legacy routes for $route_id..."
+                ( cd flights-generator && python generate_flights.py LEGACY "$route_id" --yes )
+                found=1
+              fi
+            done
+            if [ "$found" -eq 0 ]; then
+              echo "No legacy routes found."
+            fi
+          }
+
           case "$MODE" in
-            all)        gen_non_tours; gen_tours ;;
-            non_tours)  gen_non_tours ;;
-            tours)      gen_tours ;;
+            all)           gen_non_tours; gen_tours; gen_legacy ;;
+            non_tours)     gen_non_tours ;;
+            tours)         gen_tours ;;
+            legacy_routes) gen_legacy ;;
             *) echo "Unknown MODE: $MODE"; exit 1 ;;
           esac
 
