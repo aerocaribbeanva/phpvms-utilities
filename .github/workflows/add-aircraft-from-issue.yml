@@ -1,0 +1,314 @@
+name: Add Aircraft from Issue
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  add-aircraft:
+    if: contains(github.event.issue.labels.*.name, 'aircraft')
+    runs-on: ubuntu-latest
+    environment: flight-gen
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Parse issue body
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueBody = context.payload.issue.body;
+
+            // Parse YAML-style issue body
+            const parseField = (fieldName) => {
+              const regex = new RegExp(`### ${fieldName}\\s*\\n\\s*(.+?)(?=\\n###|\\n\\n###|$)`, 's');
+              const match = issueBody.match(regex);
+              return match ? match[1].trim() : '';
+            };
+
+            const icao = parseField('Aircraft ICAO Code');
+            const name = parseField('Aircraft Full Name');
+            const type = parseField('Aircraft Type');
+            const range = parseField('Range \\(Nautical Miles\\)');
+            const mtow = parseField('MTOW - Maximum Takeoff Weight \\(lbs\\)');
+            const oew = parseField('OEW - Operating Empty Weight \\(lbs\\)');
+            const maxPayload = parseField('Maximum Payload \\(lbs\\)');
+            const simbriefProfile = parseField('SimBrief Profile');
+            const simbriefUrl = parseField('SimBrief Profile URL');
+            const sourceUrl = parseField('Weight Validation Source');
+
+            // Determine flight type code
+            let flightType = '';
+            if (type.includes('Passenger')) {
+              flightType = 'J';
+            } else if (type.includes('Freighter')) {
+              flightType = 'F';
+            } else if (type.includes('Both') || type.includes('Combi')) {
+              flightType = 'J,F';
+            }
+
+            // Validation
+            const errors = [];
+            if (!icao || icao.length < 3 || icao.length > 4) {
+              errors.push('Invalid ICAO code (must be 3-4 characters)');
+            }
+            if (!range || isNaN(parseInt(range))) {
+              errors.push('Invalid range (must be a number)');
+            }
+            if (!flightType) {
+              errors.push('Could not determine flight type from selection');
+            }
+
+            // Weight validation
+            const mtowNum = parseInt(mtow?.replace(/[^0-9]/g, '') || '0');
+            const oewNum = parseInt(oew?.replace(/[^0-9]/g, '') || '0');
+            const payloadNum = parseInt(maxPayload?.replace(/[^0-9]/g, '') || '0');
+
+            if (oewNum + payloadNum > mtowNum) {
+              errors.push(`Weight validation failed: OEW (${oewNum}) + Payload (${payloadNum}) = ${oewNum + payloadNum} exceeds MTOW (${mtowNum})`);
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(errors.join('; '));
+              return { valid: false, errors };
+            }
+
+            core.setOutput('icao', icao.toUpperCase());
+            core.setOutput('name', name);
+            core.setOutput('type', type);
+            core.setOutput('range', range);
+            core.setOutput('flight_type', flightType);
+            core.setOutput('mtow', mtow);
+            core.setOutput('oew', oew);
+            core.setOutput('max_payload', maxPayload);
+            core.setOutput('simbrief_profile', simbriefProfile);
+            core.setOutput('simbrief_url', simbriefUrl || 'None provided');
+            core.setOutput('source_url', sourceUrl);
+            core.setOutput('issue_number', context.payload.issue.number);
+
+            return {
+              valid: true,
+              icao: icao.toUpperCase(),
+              name,
+              range,
+              flightType
+            };
+
+      - name: Check if aircraft already exists
+        id: check_exists
+        run: |
+          ICAO="${{ steps.parse.outputs.icao }}"
+          if grep -q "\"$ICAO\":" aircraft_config.json; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Aircraft $ICAO already exists in aircraft_config.json"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Aircraft $ICAO does not exist, proceeding with addition"
+          fi
+
+      - name: Comment if aircraft exists
+        if: steps.check_exists.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `⚠️ Aircraft **${{ steps.parse.outputs.icao }}** already exists in \`aircraft_config.json\`.\n\nPlease check the existing configuration or close this issue if it's a duplicate.`
+            });
+            core.setFailed('Aircraft already exists');
+
+      - name: Create branch for aircraft addition
+        if: steps.check_exists.outputs.exists == 'false'
+        id: branch
+        run: |
+          ICAO="${{ steps.parse.outputs.icao }}"
+          BRANCH="feat/add-aircraft-${ICAO}-${{ steps.parse.outputs.issue_number }}"
+          git checkout -b "$BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        if: steps.check_exists.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Add aircraft to aircraft_config.json
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import json
+          import sys
+
+          icao = "${{ steps.parse.outputs.icao }}"
+          range_nm = "${{ steps.parse.outputs.range }}"
+          flight_types_str = "${{ steps.parse.outputs.flight_type }}"
+
+          # Parse flight types
+          flight_types = [ft.strip() for ft in flight_types_str.split(',')]
+
+          # Load existing config
+          with open('aircraft_config.json', 'r', encoding='utf-8') as f:
+              config = json.load(f)
+
+          # Check if already exists (double-check)
+          if icao in config:
+              print(f"Aircraft {icao} already exists!")
+              sys.exit(1)
+
+          # Find insertion point (alphabetically)
+          keys = list(config.keys())
+          insert_index = 0
+          for i, key in enumerate(keys):
+              if key < icao:
+                  insert_index = i + 1
+              else:
+                  break
+
+          # Create new aircraft entry
+          new_entry = {
+              icao: {
+                  "range": range_nm,
+                  "airlines": {
+                      "CRN": flight_types
+                  }
+              }
+          }
+
+          # Insert at correct position
+          items = list(config.items())
+          items.insert(insert_index, (icao, new_entry[icao]))
+          config = dict(items)
+
+          # Write back to file
+          with open('aircraft_config.json', 'w', encoding='utf-8') as f:
+              json.dump(config, f, indent=2, ensure_ascii=False)
+              f.write('\n')  # Add trailing newline
+
+          print(f"Added {icao} at position {insert_index}")
+          PYTHON_SCRIPT
+
+      - name: Create validation summary
+        if: steps.check_exists.outputs.exists == 'false'
+        id: summary
+        run: |
+          cat > validation_summary.md << 'EOF'
+          ## Aircraft Addition Summary
+
+          **Aircraft**: ${{ steps.parse.outputs.name }} (${{ steps.parse.outputs.icao }})
+          **Type**: ${{ steps.parse.outputs.type }}
+          **Range**: ${{ steps.parse.outputs.range }} NM
+          **Flight Types**: ${{ steps.parse.outputs.flight_type }}
+
+          ### Weight Specifications
+          - **MTOW**: ${{ steps.parse.outputs.mtow }}
+          - **OEW**: ${{ steps.parse.outputs.oew }}
+          - **Max Payload**: ${{ steps.parse.outputs.max_payload }}
+
+          ### SimBrief Profile
+          - **Status**: ${{ steps.parse.outputs.simbrief_profile }}
+          - **URL**: ${{ steps.parse.outputs.simbrief_url }}
+
+          ### Source
+          - **Validation Source**: ${{ steps.parse.outputs.source_url }}
+
+          ### Changes Made
+          - Added `${{ steps.parse.outputs.icao }}` to `aircraft_config.json`
+          - This will trigger automatic regeneration of all legacy routes
+
+          ### Next Steps
+          1. Review the changes in this PR
+          2. Verify weight specifications are correct
+          3. Create/verify SimBrief custom profile if needed
+          4. Merge to trigger legacy route regeneration
+
+          ---
+          Closes #${{ steps.parse.outputs.issue_number }}
+          EOF
+
+          echo "summary_created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit changes
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add aircraft_config.json
+          git commit -m "Add ${{ steps.parse.outputs.icao }} (${{ steps.parse.outputs.name }}) to fleet
+
+          Aircraft: ${{ steps.parse.outputs.name }}
+          ICAO: ${{ steps.parse.outputs.icao }}
+          Type: ${{ steps.parse.outputs.type }}
+          Range: ${{ steps.parse.outputs.range }} NM
+          Flight Types: ${{ steps.parse.outputs.flight_type }}
+
+          Weight Specifications:
+          - MTOW: ${{ steps.parse.outputs.mtow }}
+          - OEW: ${{ steps.parse.outputs.oew }}
+          - Max Payload: ${{ steps.parse.outputs.max_payload }}
+
+          SimBrief Profile: ${{ steps.parse.outputs.simbrief_profile }}
+          Source: ${{ steps.parse.outputs.source_url }}
+
+          Closes #${{ steps.parse.outputs.issue_number }}"
+
+      - name: Push branch
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          git push -u origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Create Pull Request
+        if: steps.check_exists.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('validation_summary.md', 'utf8');
+
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Add aircraft: ${{ steps.parse.outputs.icao }} - ${{ steps.parse.outputs.name }}`,
+              head: "${{ steps.branch.outputs.branch }}",
+              base: "main",
+              body: summary
+            });
+
+            // Add comment to original issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `✅ Pull request created: #${pr.data.number}\n\nThe aircraft has been added to \`aircraft_config.json\`. Please review and merge the PR to activate the aircraft in all routes.`
+            });
+
+            // Add labels to PR
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['aircraft', 'automated']
+            });
+
+      - name: Handle errors
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.parse.outputs.issue_number }},
+              body: `❌ Failed to process aircraft addition.\n\nPlease check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
+            });

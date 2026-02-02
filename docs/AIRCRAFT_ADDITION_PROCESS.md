@@ -86,6 +86,39 @@ If `OEW + Max Payload > MTOW`, something is wrong!
 
 ## For Administrators: Processing Aircraft Requests
 
+### Automated Workflow (Recommended)
+
+The repository includes an automated workflow that processes aircraft requests from GitHub issues.
+
+**How it works:**
+1. Staff member creates issue using "🛩️ New Aircraft Request" template
+2. GitHub Actions workflow automatically triggers when issue is labeled with `aircraft`
+3. Workflow validates all specifications:
+   - ICAO code format (3-4 characters)
+   - Range is numeric
+   - Flight type is valid
+   - Weight validation: OEW + Payload ≤ MTOW
+4. Workflow checks if aircraft already exists in `aircraft_config.json`
+5. If valid and new:
+   - Creates feature branch: `feat/add-aircraft-{ICAO}-{issue-number}`
+   - Adds aircraft to `aircraft_config.json` (alphabetically sorted)
+   - Commits changes with detailed specifications
+   - Creates Pull Request with validation summary
+   - Comments on original issue with PR link
+
+**Administrator Actions:**
+1. Review the automatically created PR
+2. Verify specifications are correct
+3. Check SimBrief profile is created/linked
+4. Merge PR to activate aircraft in all routes
+5. Merging triggers automatic regeneration of legacy routes
+
+**Workflow File**: `.github/workflows/add-aircraft-from-issue.yml`
+
+### Manual Process (Alternative)
+
+If the automated workflow fails or you prefer manual addition:
+
 ### Step 1: Review the Issue
 
 1. Check all required fields are filled
@@ -124,6 +157,8 @@ Edit `aircraft_config.json` at repository root:
 - `airlines`: Object with airline codes
 - `CRN`: Aerocaribbean airline code
 - `["J"]`: Passenger, `["F"]`: Freighter, `["J","F"]`: Both
+
+**Important**: Maintain alphabetical order by ICAO code
 
 ### Step 3: Create SimBrief Profile (if needed)
 
@@ -174,14 +209,20 @@ Closes #[issue-number]"
 git push origin main
 ```
 
-### Step 5: Automated Workflow
+### Step 5: Automated Workflow Integration
 
-Once `aircraft_config.json` is pushed:
+Once `aircraft_config.json` is updated (via automated workflow PR merge or manual commit):
 
-1. **generate-legacy-routes.yml** workflow triggers
-2. Regenerates ALL legacy routes with new aircraft
-3. Commits updated `ROUTES_IMPORT_FILES_SPLITTED/` files
+1. **generate-legacy-routes.yml** workflow automatically triggers
+2. Regenerates ALL legacy routes with new aircraft included
+3. Commits updated `ROUTES_IMPORT_FILES_SPLITTED/` files to the PR/branch
 4. New aircraft now available in all route subfleets (where range permits)
+
+**Workflow Trigger**: Any change to `aircraft_config.json` triggers regeneration of:
+- All legacy routes in `flights-generator/_LEGACY/*/routes.csv`
+- Split files in `flights-generator/_LEGACY/*/ROUTES_IMPORT_FILES_SPLITTED/`
+
+This ensures all routes are immediately updated with the new aircraft.
 
 ## Weight Validation Examples
 
@@ -286,6 +327,62 @@ Payload increase: (65,000-52,000)/52,000 = 25% ✅ Reasonable
 ### Tools
 - Unit Converter: https://www.unitconverters.net/ (kg ↔ lb, NM ↔ km)
 - Range Calculator: https://www.greatcirclemap.com/
+
+## Automated Workflow Troubleshooting
+
+### Workflow doesn't trigger
+
+**Problem**: Issue created but no PR is generated
+
+**Solutions**:
+1. Ensure issue has the `aircraft` label
+2. Check [workflow runs](https://github.com/aerocaribbeanva/phpvms-utilities/actions) for errors
+3. Verify all required fields in issue are filled
+4. Check that issue was created with the template (not blank issue)
+
+### Weight validation fails
+
+**Problem**: Workflow fails with "Weight validation failed" error
+
+**Solution**:
+```
+OEW + Max Payload must be ≤ MTOW
+
+If failing:
+1. Verify MTOW is correct (check source)
+2. Verify OEW is correct (check source)
+3. Verify Max Payload is correct
+4. Check for typos (commas instead of numbers, missing digits)
+```
+
+### Aircraft already exists
+
+**Problem**: Workflow comments "Aircraft already exists"
+
+**Solution**:
+1. Check `aircraft_config.json` for existing entry
+2. If updating existing aircraft, close issue and manually edit config
+3. If duplicate request, close issue as duplicate
+
+### PR created but legacy routes not regenerated
+
+**Problem**: Aircraft added but routes not updated
+
+**Solution**:
+1. Check if PR was merged to `main` branch
+2. Verify `generate-legacy-routes.yml` workflow ran after merge
+3. Check workflow logs for errors
+4. Manually trigger workflow if needed: Actions → Generate Legacy Routes → Run workflow
+
+### SimBrief profile missing
+
+**Problem**: Aircraft added but no SimBrief profile URL
+
+**Solution**:
+1. Create custom SimBrief profile (see `SIMBRIEF_PROFILE_CREATION.md`)
+2. Update issue or PR with profile URL
+3. Document URL in phpVMS aircraft configuration
+4. Test profile with sample flight plans
 
 ## Questions?
 
