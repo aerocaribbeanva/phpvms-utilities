@@ -1,0 +1,152 @@
+name: 🛩️ New Aircraft Request
+description: Request to add a new aircraft to the fleet configuration
+title: "[Aircraft Request] "
+labels: ["aircraft", "enhancement"]
+assignees:
+  - aerocaribbeanva
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## New Aircraft Request
+        Please fill out the information below to add a new aircraft to the fleet configuration.
+
+        **Important:** All weights must be validated against official sources (Airport Planning Manuals, Type Certificates, or manufacturer specifications).
+
+  - type: input
+    id: aircraft_icao
+    attributes:
+      label: Aircraft ICAO Code
+      description: Standard ICAO aircraft type designator (e.g., B738, A20N)
+      placeholder: "B738"
+    validations:
+      required: true
+
+  - type: input
+    id: aircraft_name
+    attributes:
+      label: Aircraft Full Name
+      description: Complete aircraft name (e.g., Boeing 737-800, Airbus A320neo)
+      placeholder: "Boeing 737-800"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: aircraft_type
+    attributes:
+      label: Aircraft Type
+      description: Passenger or Freighter configuration
+      options:
+        - Passenger (J)
+        - Freighter (F)
+        - Both (Combi)
+    validations:
+      required: true
+
+  - type: input
+    id: range_nm
+    attributes:
+      label: Range (Nautical Miles)
+      description: Maximum range in nautical miles with typical payload
+      placeholder: "2935"
+    validations:
+      required: true
+
+  - type: input
+    id: mtow_lbs
+    attributes:
+      label: MTOW - Maximum Takeoff Weight (lbs)
+      description: Maximum certified takeoff weight in pounds
+      placeholder: "174200"
+    validations:
+      required: true
+
+  - type: input
+    id: oew_lbs
+    attributes:
+      label: OEW - Operating Empty Weight (lbs)
+      description: Empty weight including crew, fluids, and equipment in pounds
+      placeholder: "91300"
+    validations:
+      required: true
+
+  - type: input
+    id: max_payload_lbs
+    attributes:
+      label: Maximum Payload (lbs)
+      description: Maximum cargo/passenger weight capacity in pounds
+      placeholder: "46200"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: simbrief_profile
+    attributes:
+      label: SimBrief Profile
+      description: Does this aircraft have a SimBrief profile?
+      options:
+        - "Yes - Standard SimBrief profile exists"
+        - "No - Custom profile needed"
+        - "Modified - Based on existing variant"
+    validations:
+      required: true
+
+  - type: input
+    id: simbrief_url
+    attributes:
+      label: SimBrief Profile URL
+      description: |
+        If you created a custom SimBrief airframe, provide the shareable URL.
+        Example: https://dispatch.simbrief.com/airframes/share/1098250_1749676018149
+      placeholder: "https://dispatch.simbrief.com/airframes/share/XXXXXX_YYYYYYYYYYYY"
+
+  - type: textarea
+    id: simbrief_details
+    attributes:
+      label: SimBrief Profile Details
+      description: |
+        If custom or modified profile needed, provide details:
+        - Base aircraft for modification (if applicable)
+        - Key changes needed (weights, performance, etc.)
+        - Custom configuration requirements
+      placeholder: |
+        Base: A339 (Passenger variant)
+        Changes: Convert to freighter configuration
+        - Update OEW from 288,800 lbs to 295,400 lbs
+        - Remove passenger seats, add cargo deck
+        - Update payload capacity to 143,300 lbs
+
+  - type: input
+    id: source_url
+    attributes:
+      label: Weight Validation Source
+      description: URL to official source (APM, TCDS, manufacturer specs, or Wikipedia)
+      placeholder: "https://www.boeing.com/content/dam/boeing/boeingdotcom/commercial/airports/acaps/737.pdf"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: Additional Notes
+      description: Any other relevant information about this aircraft
+      placeholder: |
+        - Special performance characteristics
+        - Operational limitations
+        - Fleet integration notes
+
+  - type: checkboxes
+    id: validation
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify before submitting
+      options:
+        - label: I have verified the weights against an official source
+          required: true
+        - label: I have checked that this aircraft is not already in the configuration
+          required: true
+        - label: The range is expressed in nautical miles (NM)
+          required: true
+        - label: All weights are in pounds (lbs) - phpVMS requirement
+          required: true
