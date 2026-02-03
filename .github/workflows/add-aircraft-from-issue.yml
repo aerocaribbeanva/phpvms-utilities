@@ -149,6 +149,7 @@ jobs:
             const baseIcao = '${{ steps.parse.outputs.base_icao }}';
 
             let oew = 0, mtow = 0, mzfw = 0, maxPayload = 0;
+            let localData = null;
             let found = false;
             let source = '';
             let resolvedPax = 0;
@@ -167,7 +168,7 @@ jobs:
 
             if (localDataPath && fs.existsSync(localDataPath)) {
               console.log(`Checking local aircraft_data file: ${localDataPath}`);
-              const localData = JSON.parse(fs.readFileSync(localDataPath, 'utf8'));
+              localData = JSON.parse(fs.readFileSync(localDataPath, 'utf8'));
 
               // Try effective ICAO first (e.g. B738F), fall back to base (e.g. B738)
               const localKey = localData[icao] ? icao : (localData[baseIcao] ? baseIcao : null);
@@ -287,6 +288,25 @@ jobs:
               core.setOutput('found', 'false');
               core.setOutput('source', 'none');
               core.setOutput('simbrief_pax', '0');
+            }
+
+            // Validate base_type against local aircraft data (required for custom profiles)
+            const simbriefUrl = '${{ steps.parse.outputs.simbrief_url }}';
+            const isCustom = simbriefUrl && simbriefUrl !== 'None provided';
+            const baseType = '${{ steps.parse.outputs.simbrief_base_type }}'.trim();
+
+            if (isCustom) {
+              if (!baseType) {
+                core.setFailed('SimBrief Base Type is required when providing a custom SimBrief profile URL');
+              } else if (localData && localData[baseType]) {
+                console.log(`✅ SimBrief Base Type "${baseType}" validated against local aircraft data`);
+                core.setOutput('base_type_valid', 'true');
+              } else if (localData) {
+                core.setFailed(`SimBrief Base Type "${baseType}" not found in local aircraft data`);
+              } else {
+                console.log(`⚠️ Could not validate Base Type "${baseType}" — no local aircraft data file found`);
+                core.setOutput('base_type_valid', 'unknown');
+              }
             }
 
       - name: Check if aircraft already exists
@@ -563,6 +583,19 @@ jobs:
           EOF
           fi
 
+          # Base Type validation (shown only for custom profiles)
+          if [ "${{ steps.parse.outputs.simbrief_url }}" != "None provided" ]; then
+            cat >> validation_summary.md << 'EOF'
+
+          ### SimBrief Base Type Validation
+          EOF
+            if [ "${{ steps.simbrief.outputs.base_type_valid }}" == "true" ]; then
+              echo "✅ **Base Type** \`${{ steps.parse.outputs.simbrief_base_type }}\` found in local aircraft data" >> validation_summary.md
+            else
+              echo "⚠️ **Base Type** \`${{ steps.parse.outputs.simbrief_base_type }}\` could not be validated against local aircraft data" >> validation_summary.md
+            fi
+          fi
+
           cat >> validation_summary.md << 'EOF'
 
           ### Source
@@ -670,6 +703,16 @@ jobs:
               comment += '\n\n**SimBrief Validation:** ⚠️ Aircraft NOT found in SimBrief database';
               comment += '\n- A custom SimBrief airframe profile will need to be created';
               comment += '\n- See `docs/SIMBRIEF_PROFILE_CREATION.md` for instructions';
+            }
+
+            // Base Type validation info for custom profiles
+            const issueSimUrl = '${{ steps.parse.outputs.simbrief_url }}';
+            if (issueSimUrl && issueSimUrl !== 'None provided') {
+              if ('${{ steps.simbrief.outputs.base_type_valid }}' === 'true') {
+                comment += '\n\n✅ **Base Type** `${{ steps.parse.outputs.simbrief_base_type }}` validated against local aircraft data';
+              } else {
+                comment += '\n\n⚠️ **Base Type** `${{ steps.parse.outputs.simbrief_base_type }}` could not be validated';
+              }
             }
 
             comment += '\n\nPlease review and merge the PR to activate the aircraft in all routes.';
