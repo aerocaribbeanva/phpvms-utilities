@@ -295,6 +295,7 @@ jobs:
         run: |
           ICAO="${{ steps.parse.outputs.icao }}"
           BRANCH="feat/add-aircraft-${ICAO}-${{ steps.parse.outputs.issue_number }}"
+          git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
