@@ -74,6 +74,13 @@ jobs:
               flightType = 'J,F';
             }
 
+            // For freighters, append F to ICAO (e.g. B738 → B738F); passengers use as-is
+            const baseIcao = icao.toUpperCase();
+            let effectiveIcao = baseIcao;
+            if (flightType === 'F' && !baseIcao.endsWith('F')) {
+              effectiveIcao = baseIcao + 'F';
+            }
+
             // Validation
             const errors = [];
             if (!icao || icao.length < 3 || icao.length > 4) {
@@ -103,7 +110,8 @@ jobs:
               return { valid: false, errors };
             }
 
-            core.setOutput('icao', icao.toUpperCase());
+            core.setOutput('icao', effectiveIcao);
+            core.setOutput('base_icao', baseIcao);
             core.setOutput('name', name);
             core.setOutput('type', type);
             core.setOutput('range', range);
@@ -122,7 +130,7 @@ jobs:
 
             return {
               valid: true,
-              icao: icao.toUpperCase(),
+              icao: effectiveIcao,
               name,
               range,
               flightType
@@ -135,6 +143,7 @@ jobs:
           script: |
             const fs = require('fs');
             const icao = '${{ steps.parse.outputs.icao }}';
+            const baseIcao = '${{ steps.parse.outputs.base_icao }}';
 
             let oew = 0, mtow = 0, mzfw = 0, maxPayload = 0;
             let found = false;
@@ -157,20 +166,23 @@ jobs:
               console.log(`Checking local aircraft_data file: ${localDataPath}`);
               const localData = JSON.parse(fs.readFileSync(localDataPath, 'utf8'));
 
-              if (localData[icao]) {
-                console.log(`Found ${icao} in local aircraft_data file`);
+              // Try effective ICAO first (e.g. B738F), fall back to base (e.g. B738)
+              const localKey = localData[icao] ? icao : (localData[baseIcao] ? baseIcao : null);
+
+              if (localKey) {
+                console.log(`Found ${localKey} in local aircraft_data file`);
                 found = true;
                 source = 'local';
 
                 // Extract weights from local file
-                oew = localData[icao].oei_lbs || 0;  // Operating Empty Weight
-                mzfw = localData[icao].mzfw_lbs || 0; // Max Zero Fuel Weight
-                const pax = localData[icao].default_pax || 0;
+                oew = localData[localKey].oei_lbs || 0;  // Operating Empty Weight
+                mzfw = localData[localKey].mzfw_lbs || 0; // Max Zero Fuel Weight
+                const pax = localData[localKey].default_pax || 0;
                 resolvedPax = pax;
                 // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
                 maxPayload = Math.max(0, mzfw - oew - (pax * 175));
 
-                console.log(`Local data for ${icao}:`);
+                console.log(`Local data for ${localKey}:`);
                 console.log(`  OEW (oei_lbs): ${oew} lbs`);
                 console.log(`  MZFW: ${mzfw} lbs`);
                 console.log(`  Default Pax: ${pax}`);
@@ -185,11 +197,12 @@ jobs:
               const response = await fetch('https://www.simbrief.com/api/inputs.airframes.json');
               const airframes = await response.json();
 
-              // Check if aircraft exists in SimBrief database
-              const simbriefData = airframes[icao];
+              // Try effective ICAO first (e.g. B738F), fall back to base (e.g. B738)
+              const apiKey = airframes[icao] ? icao : (airframes[baseIcao] ? baseIcao : null);
+              const simbriefData = apiKey ? airframes[apiKey] : null;
 
               if (simbriefData) {
-                console.log(`Found ${icao} in SimBrief API`);
+                console.log(`Found ${apiKey} in SimBrief API`);
                 found = true;
                 if (!source) source = 'api';
 
@@ -212,7 +225,7 @@ jobs:
                     // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
                     maxPayload = Math.max(0, mzfw - oew - (apiPax * 175));
 
-                    console.log(`SimBrief API weights for ${icao}:`);
+                    console.log(`SimBrief API weights for ${apiKey}:`);
                     console.log(`  OEW: ${oew} lbs`);
                     console.log(`  MTOW: ${mtow} lbs`);
                     console.log(`  MZFW: ${mzfw} lbs`);
@@ -220,13 +233,13 @@ jobs:
                     console.log(`  Max Payload: ${maxPayload} lbs (MZFW - OEW - pax*175)`);
                   }
                 } else {
-                  console.log(`${icao} found in SimBrief API but no airframe variants available`);
+                  console.log(`${apiKey} found in SimBrief API but no airframe variants available`);
                   if (source !== 'local') {
                     found = false;
                   }
                 }
               } else {
-                console.log(`${icao} NOT found in SimBrief API`);
+                console.log(`${icao} NOT found in SimBrief API${icao !== baseIcao ? ` (also checked ${baseIcao})` : ''}`);
                 if (source !== 'local') {
                   found = false;
                 }
