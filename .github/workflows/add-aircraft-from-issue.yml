@@ -448,6 +448,12 @@ jobs:
           icao = "${{ steps.parse.outputs.icao }}"
           simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
 
+          # Custom profiles are stored in aircraft_config.json only;
+          # aircraft_data_*.json is exclusively for standard SimBrief aircraft.
+          if not simbrief_found:
+              print(f"{icao} is a custom profile — skipping aircraft_data update (all data lives in aircraft_config.json)")
+              exit(0)
+
           def parse_weight(val):
               nums = re.sub(r'[^0-9.]', '', str(val) or '0')
               return float(nums) if nums else 0.0
@@ -483,12 +489,8 @@ jobs:
               economy = default_pax
 
           # Weights: prefer SimBrief
-          if simbrief_found:
-              oew = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
-              mzfw = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
-          else:
-              oew = parse_weight("${{ steps.parse.outputs.oew }}")
-              mzfw = parse_weight("${{ steps.parse.outputs.mzfw }}")
+          oew = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
+          mzfw = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
 
           # CGO = MZFW - OEW - (pax * 175)
           cgo = max(0, int(mzfw - oew - (default_pax * 175)))
@@ -599,12 +601,11 @@ jobs:
             elif [ "${{ steps.simbrief.outputs.source }}" == "api" ]; then
               echo "  - SimBrief API (https://www.simbrief.com/api/inputs.airframes.json)" >> validation_summary.md
             elif [ "${{ steps.simbrief.outputs.source }}" == "local+api" ]; then
-              echo "  - Local aircraft_data file + SimBrief API (MTOW)" >> validation_summary.md
+              echo "  - Local aircraft_data file + SimBrief API" >> validation_summary.md
             fi
             cat >> validation_summary.md << 'EOF'
 
           **SimBrief Weights:**
-          - **MTOW**: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs
           - **OEW**: ${{ steps.simbrief.outputs.simbrief_oew }} lbs
           - **MZFW**: ${{ steps.simbrief.outputs.simbrief_mzfw }} lbs
           - **Max Payload**: ${{ steps.simbrief.outputs.simbrief_payload }} lbs
@@ -659,7 +660,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add aircraft_config.json phpvms7-fares/final_subfleets_with_updated_fares.csv
-          git add phpvms7-fares/aircraft_data_*.json
+          # aircraft_data_*.json is only for standard SimBrief aircraft; custom profiles live in aircraft_config.json
+          if [ "${{ steps.simbrief.outputs.found }}" == "true" ]; then
+            git add phpvms7-fares/aircraft_data_*.json
+          fi
 
           # Build commit message with conditional SimBrief info
           COMMIT_MSG="Add ${{ steps.parse.outputs.icao }} (${{ steps.parse.outputs.name }}) to fleet
@@ -683,7 +687,6 @@ jobs:
 
           SimBrief Validation:
           ✅ Aircraft found in SimBrief database (source: ${{ steps.simbrief.outputs.source }})
-          - SimBrief MTOW: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs
           - SimBrief OEW: ${{ steps.simbrief.outputs.simbrief_oew }} lbs
           - SimBrief Payload: ${{ steps.simbrief.outputs.simbrief_payload }} lbs"
           else
@@ -730,7 +733,6 @@ jobs:
             if ('${{ steps.simbrief.outputs.found }}' === 'true') {
               comment += '\n\n**SimBrief Validation:** ✅ Aircraft found in SimBrief database';
               comment += '\n- **Data Source**: ${{ steps.simbrief.outputs.source }}';
-              comment += '\n- MTOW: ${{ steps.simbrief.outputs.simbrief_mtow }} lbs';
               comment += '\n- OEW: ${{ steps.simbrief.outputs.simbrief_oew }} lbs';
               comment += '\n- Max Payload: ${{ steps.simbrief.outputs.simbrief_payload }} lbs';
 
