@@ -2,16 +2,20 @@ name: Add Aircraft from Issue
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
   pull-requests: write
   issues: write
 
+concurrency:
+  group: add-aircraft-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   add-aircraft:
-    if: contains(github.event.issue.labels.*.name, 'aircraft')
+    if: github.event.label.name == 'aircraft-ready'
     runs-on: ubuntu-latest
     environment: flight-gen
 

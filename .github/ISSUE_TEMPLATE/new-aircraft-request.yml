@@ -10,7 +10,10 @@ body:
     attributes:
       value: |
         ## New Aircraft Request
-        The workflow will automatically validate weights against local data and the SimBrief database.
+        Fill out the form below. Once submitted, a staff member will review and add the
+        `aircraft-ready` label to trigger the automated addition workflow.
+
+        The workflow will validate weights against local data and the SimBrief database.
         If the aircraft is **not** found in SimBrief, provide a custom profile URL below.
 
   - type: input
