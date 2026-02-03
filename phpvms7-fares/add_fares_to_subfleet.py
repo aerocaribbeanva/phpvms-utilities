@@ -6,7 +6,7 @@ from datetime import datetime
 PASSENGER_WEIGHT_LBS = 175  # Standard simbrief passenger weight in pounds
 
 # File paths
-CSV_INPUT = 'subfleets-01-16-26.csv'
+CSV_INPUT = os.environ.get('CSV_INPUT', 'subfleets-01-16-26.csv')
 JSON_INPUT = 'aircraft_data_20260116_003044.json'
 AIRCRAFT_CONFIG = os.path.join(os.path.dirname(__file__), '..', 'aircraft_config.json')
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

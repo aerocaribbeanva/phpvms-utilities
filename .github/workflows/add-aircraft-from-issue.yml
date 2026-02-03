@@ -36,16 +36,27 @@ jobs:
               return match ? match[1].trim() : '';
             };
 
+            // Parse optional numeric fields — GitHub renders empty inputs as "_No response_"
+            const parseNumericField = (fieldName) => {
+              const val = parseField(fieldName);
+              if (!val || val === '_No response_') return '0';
+              return val.replace(/[^0-9]/g, '') || '0';
+            };
+
             const icao = parseField('Aircraft ICAO Code');
             const name = parseField('Aircraft Full Name');
             const type = parseField('Aircraft Type');
             const range = parseField('Range \\(Nautical Miles\\)');
             const mtow = parseField('MTOW - Maximum Takeoff Weight \\(lbs\\)');
             const oew = parseField('OEW - Operating Empty Weight \\(lbs\\)');
-            const maxPayload = parseField('Maximum Payload \\(lbs\\)');
-            const simbriefProfile = parseField('SimBrief Profile');
-            const simbriefUrl = parseField('SimBrief Profile URL');
-            const sourceUrl = parseField('Weight Validation Source');
+            const maxPayload = parseNumericField('Maximum Payload \\(lbs\\)');
+            const paxCapacity = parseNumericField('Passenger Capacity');
+            const firstClassSeats = parseNumericField('First Class Seats');
+            const businessClassSeats = parseNumericField('Business Class Seats');
+            const simbriefUrlRaw = parseField('Custom SimBrief Profile URL');
+            const simbriefUrl = (!simbriefUrlRaw || simbriefUrlRaw === '_No response_') ? '' : simbriefUrlRaw;
+            const sourceUrlRaw = parseField('Weight Validation Source');
+            const sourceUrl = (sourceUrlRaw === '_No response_') ? '' : sourceUrlRaw;
 
             // Determine flight type code
             let flightType = '';
@@ -69,13 +80,15 @@ jobs:
               errors.push('Could not determine flight type from selection');
             }
 
-            // Weight validation
+            // Weight validation — only when all three weights are provided
             const mtowNum = parseInt(mtow?.replace(/[^0-9]/g, '') || '0');
             const oewNum = parseInt(oew?.replace(/[^0-9]/g, '') || '0');
-            const payloadNum = parseInt(maxPayload?.replace(/[^0-9]/g, '') || '0');
+            const payloadNum = parseInt(maxPayload || '0');
 
-            if (oewNum + payloadNum > mtowNum) {
-              errors.push(`Weight validation failed: OEW (${oewNum}) + Payload (${payloadNum}) = ${oewNum + payloadNum} exceeds MTOW (${mtowNum})`);
+            if (mtowNum > 0 && oewNum > 0 && payloadNum > 0) {
+              if (oewNum + payloadNum > mtowNum) {
+                errors.push(`Weight validation failed: OEW (${oewNum}) + Payload (${payloadNum}) = ${oewNum + payloadNum} exceeds MTOW (${mtowNum})`);
+              }
             }
 
             if (errors.length > 0) {
@@ -91,7 +104,9 @@ jobs:
             core.setOutput('mtow', mtow);
             core.setOutput('oew', oew);
             core.setOutput('max_payload', maxPayload);
-            core.setOutput('simbrief_profile', simbriefProfile);
+            core.setOutput('pax_capacity', paxCapacity);
+            core.setOutput('first_class_seats', firstClassSeats);
+            core.setOutput('business_class_seats', businessClassSeats);
             core.setOutput('simbrief_url', simbriefUrl || 'None provided');
             core.setOutput('source_url', sourceUrl);
             core.setOutput('issue_number', context.payload.issue.number);
@@ -115,6 +130,7 @@ jobs:
             let oew = 0, mtow = 0, mzfw = 0, maxPayload = 0;
             let found = false;
             let source = '';
+            let resolvedPax = 0;
 
             // First, check local aircraft_data file (find latest version)
             const { execSync } = require('child_process');
@@ -141,6 +157,7 @@ jobs:
                 oew = localData[icao].oei_lbs || 0;  // Operating Empty Weight
                 mzfw = localData[icao].mzfw_lbs || 0; // Max Zero Fuel Weight
                 const pax = localData[icao].default_pax || 0;
+                resolvedPax = pax;
                 // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
                 maxPayload = Math.max(0, mzfw - oew - (pax * 175));
 
@@ -182,6 +199,7 @@ jobs:
                     mzfw = firstVariant.mzfw || 0;
                     mtow = firstVariant.mtow || 0;
                     const apiPax = parseInt(firstVariant.airframe_options?.maxpax || 0);
+                    resolvedPax = apiPax;
                     // Same formula as add_fares_to_subfleet.py: MZFW - OEW - (pax * 175)
                     maxPayload = Math.max(0, mzfw - oew - (apiPax * 175));
 
@@ -220,6 +238,7 @@ jobs:
               core.setOutput('simbrief_mtow', mtow.toString());
               core.setOutput('simbrief_mzfw', mzfw.toString());
               core.setOutput('simbrief_payload', maxPayload.toString());
+              core.setOutput('simbrief_pax', resolvedPax.toString());
 
               // Validate provided weights against SimBrief
               const providedOew = parseInt('${{ steps.parse.outputs.oew }}'.replace(/[^0-9]/g, '') || '0');
@@ -242,6 +261,7 @@ jobs:
               console.log('Custom SimBrief profile will be needed');
               core.setOutput('found', 'false');
               core.setOutput('source', 'none');
+              core.setOutput('simbrief_pax', '0');
             }
 
       - name: Check if aircraft already exists
@@ -288,26 +308,68 @@ jobs:
         if: steps.check_exists.outputs.exists == 'false'
         run: |
           python3 << 'PYTHON_SCRIPT'
-          import json
-          import sys
+          import json, sys, re
 
           icao = "${{ steps.parse.outputs.icao }}"
           range_nm = "${{ steps.parse.outputs.range }}"
           flight_types_str = "${{ steps.parse.outputs.flight_type }}"
+          aircraft_name = "${{ steps.parse.outputs.name }}"
+          aircraft_type = "${{ steps.parse.outputs.type }}"
+          simbrief_url = "${{ steps.parse.outputs.simbrief_url }}".strip()
+          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
 
-          # Parse flight types
           flight_types = [ft.strip() for ft in flight_types_str.split(',')]
 
-          # Load existing config
+          def parse_weight(val):
+              nums = re.sub(r'[^0-9.]', '', str(val) or '0')
+              return float(nums) if nums else 0.0
+
+          def parse_int(val, default=0):
+              nums = re.sub(r'[^0-9]', '', str(val) or '0')
+              return int(nums) if nums else default
+
+          # --- Pax capacity and cabin layout from the issue form ---
+          pax_capacity = parse_int("${{ steps.parse.outputs.pax_capacity }}", 0)
+          first_class = parse_int("${{ steps.parse.outputs.first_class_seats }}", 0)
+          business_class = parse_int("${{ steps.parse.outputs.business_class_seats }}", 0)
+
+          is_freighter = "Freighter" in aircraft_type and "Passenger" not in aircraft_type
+
+          if is_freighter:
+              default_pax = 0
+              seats = {"F": 0, "J": 0, "Y": 0}
+          elif pax_capacity > 0:
+              default_pax = pax_capacity
+              economy = pax_capacity - first_class - business_class
+              seats = {"F": first_class, "J": business_class, "Y": economy}
+          else:
+              # Fallback: if SimBrief returned a pax count use it, otherwise derive from payload
+              sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
+              if sb_pax > 0:
+                  default_pax = sb_pax
+              else:
+                  max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
+                  default_pax = int(max_payload_lbs / 175) if max_payload_lbs > 0 else 0
+              seats = {"F": 0, "J": 0, "Y": default_pax}
+
+          # --- Weights: prefer SimBrief values when available ---
+          if simbrief_found:
+              mzfw_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
+              oew_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
+          else:
+              oew_lbs = parse_weight("${{ steps.parse.outputs.oew }}")
+              max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
+              mzfw_lbs = oew_lbs + max_payload_lbs
+
+          # --- Load and update config ---
           with open('aircraft_config.json', 'r', encoding='utf-8') as f:
               config = json.load(f)
 
-          # Check if already exists (double-check)
           if icao in config:
               print(f"Aircraft {icao} already exists!")
               sys.exit(1)
 
-          # Find insertion point (alphabetically)
+          # Find alphabetical insertion point
           keys = list(config.keys())
           insert_index = 0
           for i, key in enumerate(keys):
@@ -316,7 +378,6 @@ jobs:
               else:
                   break
 
-          # Create new aircraft entry
           aircraft_entry = {
               "range": range_nm,
               "airlines": {
@@ -324,48 +385,9 @@ jobs:
               }
           }
 
-          # If a custom SimBrief profile URL is provided, add simbrief section
-          simbrief_url = "${{ steps.parse.outputs.simbrief_url }}".strip()
-          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
-          aircraft_name = "${{ steps.parse.outputs.name }}"
-          aircraft_type = "${{ steps.parse.outputs.type }}"
-
-          # Weights from issue (strip non-numeric except decimal)
-          import re
-          def parse_weight(val):
-              nums = re.sub(r'[^0-9.]', '', val or '0')
-              return float(nums) if nums else 0.0
-
-          oew_lbs = parse_weight("${{ steps.parse.outputs.oew }}")
-          mtow_lbs = parse_weight("${{ steps.parse.outputs.mtow }}")
-          max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
-
-          # MZFW = OEW + Max Payload (structural limit)
-          mzfw_lbs = oew_lbs + max_payload_lbs
-
-          is_freighter = "Freighter" in aircraft_type and "Passenger" not in aircraft_type
-
-          # Calculate default_pax: if passenger, derive from MZFW and OEW
-          # Formula: pax = (MZFW - OEW - cargo_reserve) / 175
-          # For simplicity: if freighter, pax = 0; if passenger, use max_payload / 175
-          PASSENGER_WEIGHT_LBS = 175
-          if is_freighter:
-              default_pax = 0
-          else:
-              default_pax = int(max_payload_lbs / PASSENGER_WEIGHT_LBS)
-
-          # Only add simbrief section if custom profile URL is provided and not in standard SimBrief
+          # Write simbrief section only for custom profiles (not in standard SimBrief)
           if simbrief_url and simbrief_url != "None provided" and not simbrief_found:
-              # Parse airframe_internal_id from URL (last path segment)
-              # URL format: https://dispatch.simbrief.com/airframes/share/XXXXXX_YYYYYYYYYYYY
               airframe_id = simbrief_url.rstrip('/').split('/')[-1]
-
-              # Build seat layout: freighters get 0 across, passengers get all Y
-              if is_freighter:
-                  seats = {"F": 0, "J": 0, "Y": 0}
-              else:
-                  seats = {"F": 0, "J": 0, "Y": default_pax}
-
               aircraft_entry["simbrief"] = {
                   "profile_url": simbrief_url,
                   "airframe_internal_id": airframe_id,
@@ -377,24 +399,143 @@ jobs:
                   "is_freighter": is_freighter,
                   **seats
               }
-              print(f"Added simbrief profile for {icao} (custom profile: {airframe_id})")
+              print(f"Added simbrief profile for {icao} (custom: {airframe_id})")
           elif simbrief_found:
-              print(f"Aircraft {icao} is in standard SimBrief database, no custom profile needed")
+              print(f"{icao} is in standard SimBrief — no custom profile needed")
           else:
               print(f"No SimBrief profile URL provided for {icao}")
 
-          # Insert at correct position
           items = list(config.items())
           items.insert(insert_index, (icao, aircraft_entry))
           config = dict(items)
 
-          # Write back to file
           with open('aircraft_config.json', 'w', encoding='utf-8') as f:
               json.dump(config, f, indent=2, ensure_ascii=False)
-              f.write('\n')  # Add trailing newline
+              f.write('\n')
 
           print(f"Added {icao} at position {insert_index}")
           PYTHON_SCRIPT
+
+      - name: Update aircraft data JSON
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          python3 << 'EOF'
+          import json, glob, re
+
+          icao = "${{ steps.parse.outputs.icao }}"
+          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
+
+          def parse_weight(val):
+              nums = re.sub(r'[^0-9.]', '', str(val) or '0')
+              return float(nums) if nums else 0.0
+
+          def parse_int(val, default=0):
+              nums = re.sub(r'[^0-9]', '', str(val) or '0')
+              return int(nums) if nums else default
+
+          # Pax and cabin layout — same resolution order as the config script
+          pax_capacity = parse_int("${{ steps.parse.outputs.pax_capacity }}", 0)
+          first_class = parse_int("${{ steps.parse.outputs.first_class_seats }}", 0)
+          business_class = parse_int("${{ steps.parse.outputs.business_class_seats }}", 0)
+          is_freighter = "Freighter" in "${{ steps.parse.outputs.type }}" and "Passenger" not in "${{ steps.parse.outputs.type }}"
+
+          if is_freighter:
+              default_pax = 0
+              first_class = 0
+              business_class = 0
+              economy = 0
+          elif pax_capacity > 0:
+              default_pax = pax_capacity
+              economy = pax_capacity - first_class - business_class
+          else:
+              sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
+              default_pax = sb_pax if sb_pax > 0 else parse_int("${{ steps.parse.outputs.max_payload }}", 0) // 175
+              first_class = 0
+              business_class = 0
+              economy = default_pax
+
+          # Weights: prefer SimBrief
+          if simbrief_found:
+              oew = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
+              mzfw = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
+          else:
+              oew = parse_weight("${{ steps.parse.outputs.oew }}")
+              mzfw = oew + parse_weight("${{ steps.parse.outputs.max_payload }}")
+
+          # CGO = MZFW - OEW - (pax * 175)
+          cgo = max(0, int(mzfw - oew - (default_pax * 175)))
+
+          # Find latest aircraft_data JSON and add entry if missing
+          data_files = sorted(glob.glob('phpvms7-fares/aircraft_data_*.json'))
+          if data_files:
+              latest = data_files[-1]
+              with open(latest, 'r') as f:
+                  aircraft_data = json.load(f)
+
+              if icao not in aircraft_data:
+                  aircraft_data[icao] = {
+                      "F": first_class,
+                      "J": business_class,
+                      "Y": economy,
+                      "CGO": cgo
+                  }
+                  with open(latest, 'w') as f:
+                      json.dump(aircraft_data, f, indent=2)
+                      f.write('\n')
+                  print(f"Added {icao} to {latest} (F:{first_class} J:{business_class} Y:{economy} CGO:{cgo})")
+              else:
+                  print(f"{icao} already in aircraft_data, skipping")
+          else:
+              print("No aircraft_data JSON found")
+          EOF
+
+      - name: Add aircraft to subfleets CSV
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          python3 << 'EOF'
+          import csv
+
+          icao = "${{ steps.parse.outputs.icao }}"
+          name = "${{ steps.parse.outputs.name }}"
+          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
+          csv_path = 'phpvms7-fares/final_subfleets_with_updated_fares.csv'
+
+          with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+              reader = csv.DictReader(f)
+              rows = list(reader)
+              fieldnames = reader.fieldnames
+
+          if any(row['type'] == icao for row in rows):
+              print(f"{icao} already in subfleets CSV")
+          else:
+              # simbrief_type is set for custom profiles so phpVMS dispatch knows the type
+              new_row = {
+                  'airline': 'CRN',
+                  'hub_id': 'MUHA',
+                  'type': icao,
+                  'simbrief_type': icao if not simbrief_found else '',
+                  'name': name,
+                  'fuel_type': '1',
+                  'cost_block_hour': '0',
+                  'cost_delay_minute': '0',
+                  'ground_handling_multiplier': '100',
+                  'fares': '',
+                  'ranks': '1;2;3;4;5;6;7;8;9'
+              }
+              rows.append(new_row)
+
+              with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+                  writer = csv.DictWriter(f, fieldnames=fieldnames)
+                  writer.writeheader()
+                  writer.writerows(rows)
+              print(f"Added {icao} to subfleets CSV with empty fares")
+          EOF
+
+      - name: Calculate fares for new aircraft
+        if: steps.check_exists.outputs.exists == 'false'
+        run: |
+          cd phpvms7-fares
+          CSV_INPUT=final_subfleets_with_updated_fares.csv python3 add_fares_to_subfleet.py
 
       - name: Create validation summary
         if: steps.check_exists.outputs.exists == 'false'
@@ -407,6 +548,7 @@ jobs:
           **Type**: ${{ steps.parse.outputs.type }}
           **Range**: ${{ steps.parse.outputs.range }} NM
           **Flight Types**: ${{ steps.parse.outputs.flight_type }}
+          **Passengers**: ${{ steps.parse.outputs.pax_capacity }} (First: ${{ steps.parse.outputs.first_class_seats }} | Business: ${{ steps.parse.outputs.business_class_seats }} | Economy: calculated)
 
           ### Weight Specifications
           - **MTOW**: ${{ steps.parse.outputs.mtow }}
@@ -453,7 +595,6 @@ jobs:
           ⚠️ **Aircraft NOT found in SimBrief database**
 
           A custom SimBrief airframe profile will need to be created.
-          - **Profile Status**: ${{ steps.parse.outputs.simbrief_profile }}
           - **Profile URL**: ${{ steps.parse.outputs.simbrief_url }}
 
           See `docs/SIMBRIEF_PROFILE_CREATION.md` for instructions.
@@ -467,6 +608,7 @@ jobs:
 
           ### Changes Made
           - Added `${{ steps.parse.outputs.icao }}` to `aircraft_config.json`
+          - Updated `phpvms7-fares/final_subfleets_with_updated_fares.csv` with calculated fares
           - This will trigger automatic regeneration of all legacy routes
 
           ### Next Steps
@@ -486,7 +628,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add aircraft_config.json
+          git add aircraft_config.json phpvms7-fares/final_subfleets_with_updated_fares.csv
+          git add phpvms7-fares/aircraft_data_*.json
 
           # Build commit message with conditional SimBrief info
           COMMIT_MSG="Add ${{ steps.parse.outputs.icao }} (${{ steps.parse.outputs.name }}) to fleet
@@ -496,6 +639,7 @@ jobs:
           Type: ${{ steps.parse.outputs.type }}
           Range: ${{ steps.parse.outputs.range }} NM
           Flight Types: ${{ steps.parse.outputs.flight_type }}
+          Passengers: ${{ steps.parse.outputs.pax_capacity }} (First: ${{ steps.parse.outputs.first_class_seats }}, Business: ${{ steps.parse.outputs.business_class_seats }})
 
           Weight Specifications:
           - MTOW: ${{ steps.parse.outputs.mtow }}
@@ -515,7 +659,6 @@ jobs:
 
           SimBrief Validation:
           ⚠️ Aircraft NOT in SimBrief database - custom profile needed
-          Profile Status: ${{ steps.parse.outputs.simbrief_profile }}
           Profile URL: ${{ steps.parse.outputs.simbrief_url }}"
           fi
 
