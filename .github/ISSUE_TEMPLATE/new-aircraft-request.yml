@@ -10,17 +10,8 @@ body:
     attributes:
       value: |
         ## New Aircraft Request
-        Please fill out the information below to add a new aircraft to the fleet configuration.
-
-        **Automated Workflow:**
-        - Upon submission, the workflow will automatically check:
-          1. **Local aircraft data** (phpvms7-fares/aircraft_data_*.json)
-          2. **SimBrief API** (https://www.simbrief.com/api/inputs.airframes.json)
-        - If aircraft exists: weights will be validated automatically (warns if >5% difference)
-        - Data source will be tracked: `local`, `api`, or `local+api`
-        - If NOT found: you'll be notified that a custom SimBrief profile is needed
-
-        **Important:** All weights must be validated against official sources (Airport Planning Manuals, Type Certificates, or manufacturer specifications).
+        The workflow will automatically validate weights against local data and the SimBrief database.
+        If the aircraft is **not** found in SimBrief, provide a custom profile URL below.
 
   - type: input
     id: aircraft_icao
@@ -83,56 +74,46 @@ body:
     id: max_payload_lbs
     attributes:
       label: Maximum Payload (lbs)
-      description: Maximum cargo/passenger weight capacity in pounds
+      description: Maximum cargo/passenger weight capacity in pounds. Calculated automatically if not provided.
       placeholder: "46200"
-    validations:
-      required: true
 
-  - type: dropdown
-    id: simbrief_profile
+  - type: input
+    id: pax_capacity
     attributes:
-      label: SimBrief Profile
-      description: Does this aircraft have a SimBrief profile?
-      options:
-        - "Yes - Standard SimBrief profile exists"
-        - "No - Custom profile needed"
-        - "Modified - Based on existing variant"
-    validations:
-      required: true
+      label: Passenger Capacity
+      description: Total number of passenger seats. Leave blank for freighters.
+      placeholder: "162"
+
+  - type: input
+    id: first_class_seats
+    attributes:
+      label: First Class Seats
+      description: Number of first class seats. Leave as 0 if the aircraft has no first class cabin.
+      placeholder: "0"
+
+  - type: input
+    id: business_class_seats
+    attributes:
+      label: Business Class Seats
+      description: Number of business class seats. Economy is calculated automatically (Total - First - Business). Leave as 0 if no business class.
+      placeholder: "0"
 
   - type: input
     id: simbrief_url
     attributes:
-      label: SimBrief Profile URL
+      label: Custom SimBrief Profile URL
       description: |
-        If you created a custom SimBrief airframe, provide the shareable URL.
-        Example: https://dispatch.simbrief.com/airframes/share/1098250_1749676018149
+        Only needed if this aircraft is **not** in the standard SimBrief database.
+        The workflow checks automatically — leave blank if unsure.
+        Create a profile at https://dispatch.simbrief.com/ and share the URL here.
       placeholder: "https://dispatch.simbrief.com/airframes/share/XXXXXX_YYYYYYYYYYYY"
-
-  - type: textarea
-    id: simbrief_details
-    attributes:
-      label: SimBrief Profile Details
-      description: |
-        If custom or modified profile needed, provide details:
-        - Base aircraft for modification (if applicable)
-        - Key changes needed (weights, performance, etc.)
-        - Custom configuration requirements
-      placeholder: |
-        Base: A339 (Passenger variant)
-        Changes: Convert to freighter configuration
-        - Update OEW from 288,800 lbs to 295,400 lbs
-        - Remove passenger seats, add cargo deck
-        - Update payload capacity to 143,300 lbs
 
   - type: input
     id: source_url
     attributes:
       label: Weight Validation Source
-      description: URL to official source (APM, TCDS, manufacturer specs, or Wikipedia)
+      description: URL to an official source for the weight data (APM, manufacturer specs, Wikipedia, etc.)
       placeholder: "https://www.boeing.com/content/dam/boeing/boeingdotcom/commercial/airports/acaps/737.pdf"
-    validations:
-      required: true
 
   - type: textarea
     id: additional_notes
@@ -150,11 +131,9 @@ body:
       label: Pre-submission Checklist
       description: Please verify before submitting
       options:
-        - label: I have verified the weights against an official source
-          required: true
         - label: I have checked that this aircraft is not already in the configuration
           required: true
         - label: The range is expressed in nautical miles (NM)
           required: true
-        - label: All weights are in pounds (lbs) - phpVMS requirement
+        - label: All weights are in pounds (lbs)
           required: true
