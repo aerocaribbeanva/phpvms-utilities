@@ -361,8 +361,15 @@ jobs:
           business_class = parse_int("${{ steps.parse.outputs.business_class_seats }}", 0)
 
           is_freighter = "Freighter" in aircraft_type and "Passenger" not in aircraft_type
+          # A custom URL means the user owns all the numbers — never override with SimBrief.
+          is_custom = bool(simbrief_url) and simbrief_url != "None provided"
 
-          if is_freighter:
+          if is_custom:
+              # Custom profiles: write exactly what the user submitted, no overrides.
+              default_pax = pax_capacity
+              economy = max(0, pax_capacity - first_class - business_class)
+              seats = {"F": first_class, "J": business_class, "Y": economy}
+          elif is_freighter:
               default_pax = 0
               seats = {"F": 0, "J": 0, "Y": 0}
           elif pax_capacity > 0:
@@ -370,7 +377,7 @@ jobs:
               economy = pax_capacity - first_class - business_class
               seats = {"F": first_class, "J": business_class, "Y": economy}
           else:
-              # Fallback: if SimBrief returned a pax count use it, otherwise derive from MZFW - OEW
+              # Fallback for standard SimBrief aircraft only.
               sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
               if sb_pax > 0:
                   default_pax = sb_pax
@@ -380,13 +387,13 @@ jobs:
                   default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
               seats = {"F": 0, "J": 0, "Y": default_pax}
 
-          # --- Weights: prefer SimBrief values when available ---
-          if simbrief_found:
-              mzfw_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
-              oew_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
-          else:
+          # --- Weights: custom profiles always use issue values ---
+          if is_custom or not simbrief_found:
               oew_lbs = parse_weight("${{ steps.parse.outputs.oew }}")
               mzfw_lbs = parse_weight("${{ steps.parse.outputs.mzfw }}")
+          else:
+              mzfw_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
+              oew_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
 
           # --- Load and update config ---
           with open('aircraft_config.json', 'r', encoding='utf-8') as f:
@@ -412,8 +419,8 @@ jobs:
               }
           }
 
-          # Write simbrief section only for custom profiles (not in standard SimBrief)
-          if simbrief_url and simbrief_url != "None provided" and not simbrief_found:
+          # Write simbrief section whenever a custom profile URL was provided
+          if is_custom:
               airframe_id = simbrief_url.rstrip('/').split('/')[-1]
               aircraft_entry["simbrief"] = {
                   "profile_url": simbrief_url,
