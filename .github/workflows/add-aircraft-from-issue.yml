@@ -364,7 +364,12 @@ jobs:
           # A custom URL means the user owns all the numbers — never override with SimBrief.
           is_custom = bool(simbrief_url) and simbrief_url != "None provided"
 
-          if is_freighter:
+          if is_custom:
+              # Custom profiles: write exactly what the user submitted, no overrides.
+              default_pax = pax_capacity
+              economy = max(0, pax_capacity - first_class - business_class)
+              seats = {"F": first_class, "J": business_class, "Y": economy}
+          elif is_freighter:
               default_pax = 0
               seats = {"F": 0, "J": 0, "Y": 0}
           elif pax_capacity > 0:
@@ -372,17 +377,14 @@ jobs:
               economy = pax_capacity - first_class - business_class
               seats = {"F": first_class, "J": business_class, "Y": economy}
           else:
-              # Fallback only for standard SimBrief aircraft; custom profiles must supply pax on the issue.
-              if not is_custom:
-                  sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
-                  if sb_pax > 0:
-                      default_pax = sb_pax
-                  else:
-                      oew_tmp = parse_weight("${{ steps.parse.outputs.oew }}")
-                      mzfw_tmp = parse_weight("${{ steps.parse.outputs.mzfw }}")
-                      default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
+              # Fallback for standard SimBrief aircraft only.
+              sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
+              if sb_pax > 0:
+                  default_pax = sb_pax
               else:
-                  default_pax = 0
+                  oew_tmp = parse_weight("${{ steps.parse.outputs.oew }}")
+                  mzfw_tmp = parse_weight("${{ steps.parse.outputs.mzfw }}")
+                  default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
               seats = {"F": 0, "J": 0, "Y": default_pax}
 
           # --- Weights: custom profiles always use issue values ---
