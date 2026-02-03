@@ -439,86 +439,6 @@ jobs:
           print(f"Added {icao} at position {insert_index}")
           PYTHON_SCRIPT
 
-      - name: Update aircraft data JSON
-        if: steps.check_exists.outputs.exists == 'false'
-        run: |
-          python3 << 'EOF'
-          import json, glob, re
-
-          icao = "${{ steps.parse.outputs.icao }}"
-          simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
-
-          # Custom profiles are stored in aircraft_config.json only;
-          # aircraft_data_*.json is exclusively for standard SimBrief aircraft.
-          if not simbrief_found:
-              print(f"{icao} is a custom profile — skipping aircraft_data update (all data lives in aircraft_config.json)")
-              exit(0)
-
-          def parse_weight(val):
-              nums = re.sub(r'[^0-9.]', '', str(val) or '0')
-              return float(nums) if nums else 0.0
-
-          def parse_int(val, default=0):
-              nums = re.sub(r'[^0-9]', '', str(val) or '0')
-              return int(nums) if nums else default
-
-          # Pax and cabin layout — same resolution order as the config script
-          pax_capacity = parse_int("${{ steps.parse.outputs.pax_capacity }}", 0)
-          first_class = parse_int("${{ steps.parse.outputs.first_class_seats }}", 0)
-          business_class = parse_int("${{ steps.parse.outputs.business_class_seats }}", 0)
-          is_freighter = "Freighter" in "${{ steps.parse.outputs.type }}" and "Passenger" not in "${{ steps.parse.outputs.type }}"
-
-          if is_freighter:
-              default_pax = 0
-              first_class = 0
-              business_class = 0
-              economy = 0
-          elif pax_capacity > 0:
-              default_pax = pax_capacity
-              economy = pax_capacity - first_class - business_class
-          else:
-              sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
-              if sb_pax > 0:
-                  default_pax = sb_pax
-              else:
-                  oew_tmp = parse_weight("${{ steps.parse.outputs.oew }}")
-                  mzfw_tmp = parse_weight("${{ steps.parse.outputs.mzfw }}")
-                  default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
-              first_class = 0
-              business_class = 0
-              economy = default_pax
-
-          # Weights: prefer SimBrief
-          oew = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
-          mzfw = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
-
-          # CGO = MZFW - OEW - (pax * 175)
-          cgo = max(0, int(mzfw - oew - (default_pax * 175)))
-
-          # Find latest aircraft_data JSON and add entry if missing
-          data_files = sorted(glob.glob('phpvms7-fares/aircraft_data_*.json'))
-          if data_files:
-              latest = data_files[-1]
-              with open(latest, 'r') as f:
-                  aircraft_data = json.load(f)
-
-              if icao not in aircraft_data:
-                  aircraft_data[icao] = {
-                      "F": first_class,
-                      "J": business_class,
-                      "Y": economy,
-                      "CGO": cgo
-                  }
-                  with open(latest, 'w') as f:
-                      json.dump(aircraft_data, f, indent=2)
-                      f.write('\n')
-                  print(f"Added {icao} to {latest} (F:{first_class} J:{business_class} Y:{economy} CGO:{cgo})")
-              else:
-                  print(f"{icao} already in aircraft_data, skipping")
-          else:
-              print("No aircraft_data JSON found")
-          EOF
-
       - name: Add aircraft to subfleets CSV
         if: steps.check_exists.outputs.exists == 'false'
         run: |
@@ -660,10 +580,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add aircraft_config.json phpvms7-fares/final_subfleets_with_updated_fares.csv
-          # aircraft_data_*.json is only for standard SimBrief aircraft; custom profiles live in aircraft_config.json
-          if [ "${{ steps.simbrief.outputs.found }}" == "true" ]; then
-            git add phpvms7-fares/aircraft_data_*.json
-          fi
 
           # Build commit message with conditional SimBrief info
           COMMIT_MSG="Add ${{ steps.parse.outputs.icao }} (${{ steps.parse.outputs.name }}) to fleet
