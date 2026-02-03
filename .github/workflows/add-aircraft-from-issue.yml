@@ -53,7 +53,9 @@ jobs:
             const range = parseField('Range \\(Nautical Miles\\)');
             const mtow = parseField('MTOW - Maximum Takeoff Weight \\(lbs\\)');
             const oew = parseField('OEW - Operating Empty Weight \\(lbs\\)');
-            const maxPayload = parseNumericField('Maximum Payload \\(lbs\\)');
+            const mzfw = parseNumericField('MZFW - Max Zero Fuel Weight \\(lbs\\)');
+            const hubIdRaw = parseField('Subfleet Main Hub');
+            const hubId = hubIdRaw || 'MUHA';
             const paxCapacity = parseNumericField('Passenger Capacity');
             const firstClassSeats = parseNumericField('First Class Seats');
             const businessClassSeats = parseNumericField('Business Class Seats');
@@ -84,14 +86,15 @@ jobs:
               errors.push('Could not determine flight type from selection');
             }
 
-            // Weight validation — only when all three weights are provided
+            // Weight validation — MZFW must not exceed MTOW
             const mtowNum = parseInt(mtow?.replace(/[^0-9]/g, '') || '0');
             const oewNum = parseInt(oew?.replace(/[^0-9]/g, '') || '0');
-            const payloadNum = parseInt(maxPayload || '0');
+            const mzfwNum = parseInt(mzfw || '0');
+            const calculatedPayload = mzfwNum > 0 && oewNum > 0 ? mzfwNum - oewNum : 0;
 
-            if (mtowNum > 0 && oewNum > 0 && payloadNum > 0) {
-              if (oewNum + payloadNum > mtowNum) {
-                errors.push(`Weight validation failed: OEW (${oewNum}) + Payload (${payloadNum}) = ${oewNum + payloadNum} exceeds MTOW (${mtowNum})`);
+            if (mtowNum > 0 && mzfwNum > 0) {
+              if (mzfwNum > mtowNum) {
+                errors.push(`Weight validation failed: MZFW (${mzfwNum}) exceeds MTOW (${mtowNum})`);
               }
             }
 
@@ -107,7 +110,9 @@ jobs:
             core.setOutput('flight_type', flightType);
             core.setOutput('mtow', mtow);
             core.setOutput('oew', oew);
-            core.setOutput('max_payload', maxPayload);
+            core.setOutput('mzfw', mzfw);
+            core.setOutput('hub_id', hubId);
+            core.setOutput('calculated_payload', calculatedPayload.toString());
             core.setOutput('pax_capacity', paxCapacity);
             core.setOutput('first_class_seats', firstClassSeats);
             core.setOutput('business_class_seats', businessClassSeats);
@@ -348,13 +353,14 @@ jobs:
               economy = pax_capacity - first_class - business_class
               seats = {"F": first_class, "J": business_class, "Y": economy}
           else:
-              # Fallback: if SimBrief returned a pax count use it, otherwise derive from payload
+              # Fallback: if SimBrief returned a pax count use it, otherwise derive from MZFW - OEW
               sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
               if sb_pax > 0:
                   default_pax = sb_pax
               else:
-                  max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
-                  default_pax = int(max_payload_lbs / 175) if max_payload_lbs > 0 else 0
+                  oew_tmp = parse_weight("${{ steps.parse.outputs.oew }}")
+                  mzfw_tmp = parse_weight("${{ steps.parse.outputs.mzfw }}")
+                  default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
               seats = {"F": 0, "J": 0, "Y": default_pax}
 
           # --- Weights: prefer SimBrief values when available ---
@@ -363,8 +369,7 @@ jobs:
               oew_lbs = parse_weight("${{ steps.simbrief.outputs.simbrief_oew }}")
           else:
               oew_lbs = parse_weight("${{ steps.parse.outputs.oew }}")
-              max_payload_lbs = parse_weight("${{ steps.parse.outputs.max_payload }}")
-              mzfw_lbs = oew_lbs + max_payload_lbs
+              mzfw_lbs = parse_weight("${{ steps.parse.outputs.mzfw }}")
 
           # --- Load and update config ---
           with open('aircraft_config.json', 'r', encoding='utf-8') as f:
@@ -454,7 +459,12 @@ jobs:
               economy = pax_capacity - first_class - business_class
           else:
               sb_pax = parse_int("${{ steps.simbrief.outputs.simbrief_pax }}", 0)
-              default_pax = sb_pax if sb_pax > 0 else parse_int("${{ steps.parse.outputs.max_payload }}", 0) // 175
+              if sb_pax > 0:
+                  default_pax = sb_pax
+              else:
+                  oew_tmp = parse_weight("${{ steps.parse.outputs.oew }}")
+                  mzfw_tmp = parse_weight("${{ steps.parse.outputs.mzfw }}")
+                  default_pax = int((mzfw_tmp - oew_tmp) / 175) if mzfw_tmp > oew_tmp else 0
               first_class = 0
               business_class = 0
               economy = default_pax
@@ -465,7 +475,7 @@ jobs:
               mzfw = parse_weight("${{ steps.simbrief.outputs.simbrief_mzfw }}")
           else:
               oew = parse_weight("${{ steps.parse.outputs.oew }}")
-              mzfw = oew + parse_weight("${{ steps.parse.outputs.max_payload }}")
+              mzfw = parse_weight("${{ steps.parse.outputs.mzfw }}")
 
           # CGO = MZFW - OEW - (pax * 175)
           cgo = max(0, int(mzfw - oew - (default_pax * 175)))
@@ -516,7 +526,7 @@ jobs:
               # simbrief_type is set for custom profiles so phpVMS dispatch knows the type
               new_row = {
                   'airline': 'CRN',
-                  'hub_id': 'MUHA',
+                  'hub_id': '${{ steps.parse.outputs.hub_id }}',
                   'type': icao,
                   'simbrief_type': icao if not simbrief_found else '',
                   'name': name,
@@ -553,12 +563,14 @@ jobs:
           **Type**: ${{ steps.parse.outputs.type }}
           **Range**: ${{ steps.parse.outputs.range }} NM
           **Flight Types**: ${{ steps.parse.outputs.flight_type }}
+          **Hub**: ${{ steps.parse.outputs.hub_id }}
           **Passengers**: ${{ steps.parse.outputs.pax_capacity }} (First: ${{ steps.parse.outputs.first_class_seats }} | Business: ${{ steps.parse.outputs.business_class_seats }} | Economy: calculated)
 
           ### Weight Specifications
           - **MTOW**: ${{ steps.parse.outputs.mtow }}
           - **OEW**: ${{ steps.parse.outputs.oew }}
-          - **Max Payload**: ${{ steps.parse.outputs.max_payload }}
+          - **MZFW**: ${{ steps.parse.outputs.mzfw }}
+          - **Max Payload** (MZFW − OEW): ${{ steps.parse.outputs.calculated_payload }} lbs
 
           ### SimBrief Database Check
           EOF
@@ -644,12 +656,14 @@ jobs:
           Type: ${{ steps.parse.outputs.type }}
           Range: ${{ steps.parse.outputs.range }} NM
           Flight Types: ${{ steps.parse.outputs.flight_type }}
+          Hub: ${{ steps.parse.outputs.hub_id }}
           Passengers: ${{ steps.parse.outputs.pax_capacity }} (First: ${{ steps.parse.outputs.first_class_seats }}, Business: ${{ steps.parse.outputs.business_class_seats }})
 
           Weight Specifications:
           - MTOW: ${{ steps.parse.outputs.mtow }}
           - OEW: ${{ steps.parse.outputs.oew }}
-          - Max Payload: ${{ steps.parse.outputs.max_payload }}"
+          - MZFW: ${{ steps.parse.outputs.mzfw }}
+          - Max Payload (MZFW - OEW): ${{ steps.parse.outputs.calculated_payload }} lbs"
 
           if [ "${{ steps.simbrief.outputs.found }}" == "true" ]; then
             COMMIT_MSG="$COMMIT_MSG

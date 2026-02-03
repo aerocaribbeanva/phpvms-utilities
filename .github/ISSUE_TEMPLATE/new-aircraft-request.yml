@@ -74,11 +74,25 @@ body:
       required: true
 
   - type: input
-    id: max_payload_lbs
+    id: mzfw_lbs
     attributes:
-      label: Maximum Payload (lbs)
-      description: Maximum cargo/passenger weight capacity in pounds. Calculated automatically if not provided.
-      placeholder: "46200"
+      label: MZFW - Max Zero Fuel Weight (lbs)
+      description: Maximum weight of the aircraft without any fuel. Used to calculate payload capacity (MZFW − OEW).
+      placeholder: "137500"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hub_id
+    attributes:
+      label: Subfleet Main Hub
+      description: The main hub airport for this subfleet
+      options:
+        - MUHA
+        - KPHX
+        - TJSJ
+    validations:
+      required: true
 
   - type: input
     id: pax_capacity
