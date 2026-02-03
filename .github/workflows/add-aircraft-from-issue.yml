@@ -61,6 +61,8 @@ jobs:
             const businessClassSeats = parseNumericField('Business Class Seats');
             const simbriefUrlRaw = parseField('Custom SimBrief Profile URL');
             const simbriefUrl = (!simbriefUrlRaw || simbriefUrlRaw === '_No response_') ? '' : simbriefUrlRaw;
+            const simbriefBaseTypeRaw = parseField('SimBrief Base Type');
+            const simbriefBaseType = (!simbriefBaseTypeRaw || simbriefBaseTypeRaw === '_No response_') ? '' : simbriefBaseTypeRaw.trim();
             const sourceUrlRaw = parseField('Weight Validation Source');
             const sourceUrl = (sourceUrlRaw === '_No response_') ? '' : sourceUrlRaw;
 
@@ -125,6 +127,7 @@ jobs:
             core.setOutput('first_class_seats', firstClassSeats);
             core.setOutput('business_class_seats', businessClassSeats);
             core.setOutput('simbrief_url', simbriefUrl || 'None provided');
+            core.setOutput('simbrief_base_type', simbriefBaseType);
             core.setOutput('source_url', sourceUrl);
             core.setOutput('issue_number', context.payload.issue.number);
 
@@ -339,6 +342,7 @@ jobs:
           aircraft_name = "${{ steps.parse.outputs.name }}"
           aircraft_type = "${{ steps.parse.outputs.type }}"
           simbrief_url = "${{ steps.parse.outputs.simbrief_url }}".strip()
+          simbrief_base_type = "${{ steps.parse.outputs.simbrief_base_type }}".strip()
           simbrief_found = "${{ steps.simbrief.outputs.found }}" == "true"
 
           flight_types = [ft.strip() for ft in flight_types_str.split(',')]
@@ -415,7 +419,7 @@ jobs:
                   "profile_url": simbrief_url,
                   "airframe_internal_id": airframe_id,
                   "aircraft_name": aircraft_name,
-                  "base_type": "",
+                  "base_type": simbrief_base_type,
                   "default_pax": default_pax,
                   "mzfw_lbs": mzfw_lbs,
                   "oei_lbs": oew_lbs,

@@ -126,6 +126,17 @@ body:
       placeholder: "https://dispatch.simbrief.com/airframes/share/XXXXXX_YYYYYYYYYYYY"
 
   - type: input
+    id: simbrief_base_type
+    attributes:
+      label: SimBrief Base Type
+      description: |
+        Only needed when providing a custom SimBrief profile above.
+        The ICAO type code of the base aircraft the custom airframe is derived from
+        (e.g., for an E190F freighter conversion the base type is `E190`).
+        Leave blank if the aircraft exists in the standard SimBrief database.
+      placeholder: "E190"
+
+  - type: input
     id: source_url
     attributes:
       label: Weight Validation Source
