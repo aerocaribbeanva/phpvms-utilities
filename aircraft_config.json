@@ -100,6 +100,27 @@
       ]
     }
   },
+  "A332F": {
+    "range": "4000",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    },
+    "simbrief": {
+      "profile_url": "https://dispatch.simbrief.com/airframes/share/1098250_1770092692661",
+      "airframe_internal_id": "1098250_1770092692661",
+      "aircraft_name": "Airbus A300-200 Freighter",
+      "base_type": "A332",
+      "default_pax": 0,
+      "mzfw_lbs": 374785.0,
+      "oei_lbs": 270254.0,
+      "is_freighter": true,
+      "F": 0,
+      "J": 0,
+      "Y": 0
+    }
+  },
   "A333": {
     "range": "6350",
     "airlines": {
