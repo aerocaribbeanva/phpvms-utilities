@@ -388,6 +388,27 @@
       ]
     }
   },
+  "B733F": {
+    "range": "1820",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    },
+    "simbrief": {
+      "profile_url": "https://dispatch.simbrief.com/airframes/share/1098250_1770148316722",
+      "airframe_internal_id": "1098250_1770148316722",
+      "aircraft_name": "Boeing 737-300 Freighter",
+      "base_type": "B733",
+      "default_pax": 0,
+      "mzfw_lbs": 10900.0,
+      "oei_lbs": 78500.0,
+      "is_freighter": true,
+      "F": 0,
+      "J": 0,
+      "Y": 0
+    }
+  },
   "B734": {
     "range": "2060",
     "airlines": {
