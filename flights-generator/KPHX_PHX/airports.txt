@@ -66,3 +66,4 @@ KPHX-PHX,MMCL-CUL  # Culiacán (Federal de Bachigualato Intl)
 KPHX-PHX,MMZH-ZIH  # Zihuatanejo/Ixtapa Intl
 KPHX-PHX,MMMD-MID  # Mérida (Manuel Crescencio Rejón Intl)
 KPHX-PHX,MMTM-TAM  # Tampico (General Francisco Javier Mina Intl)
+KPHX-PHX,KSLC-SLC  # Salt Lake City Intl (Salt Lake City International Airport)
