@@ -649,6 +649,27 @@
       ]
     }
   },
+  "C208F": {
+    "range": "850",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    },
+    "simbrief": {
+      "profile_url": "https://dispatch.simbrief.com/airframes/share/1098250_1771642348384",
+      "airframe_internal_id": "1098250_1771642348384",
+      "aircraft_name": "Cessna 208B Super Cargomaster",
+      "base_type": "C208",
+      "default_pax": 0,
+      "mzfw_lbs": 8270.0,
+      "oei_lbs": 4570.0,
+      "is_freighter": true,
+      "F": 0,
+      "J": 0,
+      "Y": 0
+    }
+  },
   "C25C": {
     "range": "2165",
     "airlines": {
