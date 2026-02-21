@@ -707,6 +707,27 @@
       ]
     }
   },
+  "C408F": {
+    "range": "400",
+    "airlines": {
+      "CRN": [
+        "F"
+      ]
+    },
+    "simbrief": {
+      "profile_url": "https://dispatch.simbrief.com/airframes/share/1098250_1771643367640",
+      "airframe_internal_id": "1098250_1771643367640",
+      "aircraft_name": "Cessna 408 SkyCourier",
+      "base_type": "C408",
+      "default_pax": 0,
+      "mzfw_lbs": 14200.0,
+      "oei_lbs": 11000.0,
+      "is_freighter": true,
+      "F": 0,
+      "J": 0,
+      "Y": 0
+    }
+  },
   "C750": {
     "range": "3460",
     "airlines": {
