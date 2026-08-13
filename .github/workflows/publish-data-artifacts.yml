@@ -1,0 +1,96 @@
+name: Publish Data Artifacts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'aircraft_config.json'
+      - 'phpvms7-fares/aircraft_data_*.json'
+      - 'distance_cache.json'
+      - 'flights-generator/distance_cache.json'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Find latest aircraft_data file
+        id: find_aircraft_data
+        shell: bash
+        run: |
+          # Find the latest aircraft_data_*.json file in phpvms7-fares
+          LATEST=$(ls -t phpvms7-fares/aircraft_data_*.json 2>/dev/null | head -1)
+          if [ -z "$LATEST" ]; then
+            echo "ERROR: No aircraft_data_*.json file found"
+            exit 1
+          fi
+          echo "file=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Found: $LATEST"
+
+      - name: Determine distance_cache location
+        id: find_cache
+        shell: bash
+        run: |
+          # Check which distance_cache exists
+          if [ -f "flights-generator/distance_cache.json" ]; then
+            echo "file=flights-generator/distance_cache.json" >> "$GITHUB_OUTPUT"
+          elif [ -f "distance_cache.json" ]; then
+            echo "file=distance_cache.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "WARNING: No distance_cache.json found, will create empty"
+            echo "{}" > distance_cache.json
+            echo "file=distance_cache.json" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate version tag
+        id: version
+        shell: bash
+        run: |
+          # Use date-based version: YYYY.MM.DD.HHmm
+          VERSION=$(date -u +'%Y.%m.%d.%H%M')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Create/Update Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Data Artifacts ${{ steps.version.outputs.version }}
+          body: |
+            Automated release of phpvms-utilities data artifacts.
+
+            **Files included:**
+            - `aircraft_config.json` - Aircraft configuration and ranges
+            - `simbrief_aircraft_data.json` - SimBrief aircraft data
+            - `distance_cache.json` - Distance calculation cache
+
+            Generated: ${{ github.event.head_commit.timestamp }}
+            Commit: ${{ github.sha }}
+          files: |
+            aircraft_config.json
+            ${{ steps.find_aircraft_data.outputs.file }}
+            ${{ steps.find_cache.outputs.file }}
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        shell: bash
+        run: |
+          echo "✅ Release published: v${{ steps.version.outputs.version }}"
+          echo "📦 Files:"
+          echo "  - aircraft_config.json"
+          echo "  - ${{ steps.find_aircraft_data.outputs.file }}"
+          echo "  - ${{ steps.find_cache.outputs.file }}"
